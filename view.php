@@ -1,0 +1,69 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+
+/**
+ * View page for TUP Meet.
+ *
+ * @package    mod_tupmeet
+ * @copyright  2026 Tecnologico Universitario Region Sureste
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+require('../../config.php');
+require_once(__DIR__ . '/lib.php');
+
+$id = required_param('id', PARAM_INT);
+$cm = get_coursemodule_from_id('tupmeet', $id, 0, false, MUST_EXIST);
+$course = get_course($cm->course);
+$tupmeet = $DB->get_record('tupmeet', ['id' => $cm->instance], '*', MUST_EXIST);
+
+require_login($course, true, $cm);
+$context = context_module::instance($cm->id);
+require_capability('mod/tupmeet:view', $context);
+
+tupmeet_view($tupmeet, $course, $cm, $context);
+
+$PAGE->set_url('/mod/tupmeet/view.php', ['id' => $cm->id]);
+$PAGE->set_title(format_string($tupmeet->name));
+$PAGE->set_heading(format_string($course->fullname));
+$PAGE->set_context($context);
+
+$recurrencedays = json_decode($tupmeet->recurrencedays ?? '[]', true) ?: [];
+$daylabels = [];
+$map = [
+    'mon' => get_string('monday', 'calendar'),
+    'tue' => get_string('tuesday', 'calendar'),
+    'wed' => get_string('wednesday', 'calendar'),
+    'thu' => get_string('thursday', 'calendar'),
+    'fri' => get_string('friday', 'calendar'),
+    'sat' => get_string('saturday', 'calendar'),
+    'sun' => get_string('sunday', 'calendar'),
+];
+foreach ($recurrencedays as $day) {
+    if (isset($map[$day])) {
+        $daylabels[] = $map[$day];
+    }
+}
+
+echo $OUTPUT->header();
+echo $OUTPUT->heading(format_string($tupmeet->name));
+
+if (!empty($tupmeet->intro)) {
+    echo $OUTPUT->box(format_module_intro('tupmeet', $tupmeet, $cm->id), 'generalbox mod_introbox');
+}
+
+$table = new html_table();
+$table->attributes['class'] = 'generaltable';
+$table->data[] = [get_string('startdatetime', 'tupmeet'), userdate($tupmeet->startdatetime)];
+$table->data[] = [get_string('enddatetime', 'tupmeet'), userdate($tupmeet->enddatetime)];
+$table->data[] = [get_string('isrecurring', 'tupmeet'), $tupmeet->isrecurring ? get_string('yes') : get_string('no')];
+if ($tupmeet->isrecurring) {
+    $table->data[] = [get_string('recurrencedays', 'tupmeet'), implode(', ', $daylabels)];
+    $table->data[] = [get_string('recurrenceuntil', 'tupmeet'), userdate($tupmeet->recurrenceuntil, get_string('strftimedatefullshort', 'langconfig'))];
+}
+$table->data[] = [get_string('autorecord', 'tupmeet'), $tupmeet->autorecord ? get_string('yes') : get_string('no')];
+$table->data[] = [get_string('publicationmode', 'tupmeet'), get_string('publication' . $tupmeet->publicationmode, 'tupmeet')];
+
+echo html_writer::table($table);
+echo $OUTPUT->notification(get_string('phase0notice', 'tupmeet'), 'info');
+echo $OUTPUT->footer();
