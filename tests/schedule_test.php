@@ -126,4 +126,84 @@ final class schedule_test extends \advanced_testcase {
         $next = schedule::next_session($meeting, $meeting->enddatetime);
         $this->assertSame('2026-11-02T10:00:00-05:00', schedule::date($next, $meeting->timezone)->format(DATE_RFC3339));
     }
+
+    /**
+     * The reported Saturday smoke ends on October 17 locally, despite UNTIL's October 18 UTC date.
+     */
+    public function test_saturday_smoke_inclusive_end(): void {
+        $meeting = $this->meeting();
+        $meeting->startdatetime = (new \DateTimeImmutable('2026-10-10T09:00:00-05:00'))->getTimestamp();
+        $meeting->enddatetime = $meeting->startdatetime + 3 * HOURSECS;
+        $meeting->isrecurring = 1;
+        $meeting->recurrencedays = '["sat"]';
+        $meeting->recurrenceuntil = (new \DateTimeImmutable('2026-10-17T00:00:00-05:00'))->getTimestamp();
+        $this->assertSame(
+            ['RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SA;WKST=MO;UNTIL=20261018T045959Z'],
+            schedule::payload($meeting)['recurrence']
+        );
+        $laststart = (new \DateTimeImmutable('2026-10-17T09:00:00-05:00'))->getTimestamp();
+        $this->assertSame($laststart, schedule::next_session($meeting, $meeting->enddatetime));
+        $this->assertNull(schedule::next_session($meeting, $laststart + 3 * HOURSECS));
+    }
+
+    /**
+     * Late local starts remain included; even a selected weekday after the local limit is excluded.
+     *
+     * @dataProvider inclusive_end_provider
+     * @param string $zone IANA timezone
+     * @param string $first First start with explicit offset
+     * @param string $finaldate Selected final date at local midnight
+     * @param string $last Last permitted start with explicit offset
+     * @param string $expecteduntil Expected RFC5545 UTC limit
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('inclusive_end_provider')]
+    public function test_inclusive_local_boundary(
+        string $zone,
+        string $first,
+        string $finaldate,
+        string $last,
+        string $expecteduntil
+    ): void {
+        $meeting = $this->meeting();
+        $meeting->timezone = $zone;
+        $meeting->startdatetime = (new \DateTimeImmutable($first))->getTimestamp();
+        $meeting->enddatetime = $meeting->startdatetime + 15 * MINSECS;
+        $meeting->isrecurring = 1;
+        $meeting->recurrencedays = '["mon","tue","wed","thu","fri","sat","sun"]';
+        $meeting->recurrenceuntil = (new \DateTimeImmutable($finaldate))->getTimestamp();
+        $this->assertSame([], schedule::errors($meeting));
+        $rule = schedule::payload($meeting)['recurrence'][0];
+        $untilvalue = explode(';UNTIL=', $rule)[1];
+        $this->assertSame($expecteduntil, $untilvalue);
+        $until = \DateTimeImmutable::createFromFormat('!Ymd\THis\Z', $untilvalue, new \DateTimeZone('UTC'));
+        $laststart = (new \DateTimeImmutable($last))->setTimezone(new \DateTimeZone($zone));
+        $nextday = $laststart->modify('+1 day')->setTime(0, 0);
+        // RFC5545 compares occurrence starts to UNTIL inclusively, as absolute instants.
+        $this->assertLessThanOrEqual($until->getTimestamp(), $laststart->getTimestamp());
+        $this->assertGreaterThan($until->getTimestamp(), $nextday->getTimestamp());
+        $this->assertSame($laststart->getTimestamp(), schedule::next_session($meeting, $laststart->getTimestamp()));
+        $this->assertNull(schedule::next_session($meeting, $laststart->getTimestamp() + 15 * MINSECS));
+    }
+
+    /**
+     * Local end dates spanning fixed offset, the 25-hour fall day and the 23-hour spring day.
+     *
+     * @return array Test cases
+     */
+    public static function inclusive_end_provider(): array {
+        return [
+            'Cancun Saturday late evening' => [
+                'America/Cancun', '2026-10-16T23:30:00-05:00', '2026-10-17T00:00:00-05:00',
+                '2026-10-17T23:30:00-05:00', '20261018T045959Z',
+            ],
+            'New York autumn DST transition' => [
+                'America/New_York', '2026-10-31T23:30:00-04:00', '2026-11-01T00:00:00-04:00',
+                '2026-11-01T23:30:00-05:00', '20261102T045959Z',
+            ],
+            'New York spring DST transition' => [
+                'America/New_York', '2026-03-07T23:30:00-05:00', '2026-03-08T00:00:00-05:00',
+                '2026-03-08T23:30:00-04:00', '20260309T035959Z',
+            ],
+        ];
+    }
 }

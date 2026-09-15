@@ -13,7 +13,7 @@ This branch preserves Phase 1 institutional account administration and adds Cale
 - Calendar primary-event creation, whole-series edits, weekly RRULE and automatic Google Meet conference requests.
 - Explicit Moodle timezone, stable event identity, post-commit synchronization and durable task retries.
 - Visible pending/error states and a validated Google Meet join button.
-- Version `2026091501` (`0.3.0-alpha`), with fresh-install and Phase 0/1 upgrade paths.
+- Version `2026091502` (`0.3.1-alpha`), with fresh-install and Phase 0/1 upgrade paths; this patch adds Mexican Spanish without schema changes.
 
 The original activity baseline provides:
 
@@ -28,7 +28,7 @@ The original activity baseline provides:
 
 Google calls use Moodle OAuth2, OpenID userinfo and Calendar API. **Meet REST recording/transcription configuration, recording publication, Drive integration and legacy migration are not implemented.** Recording/transcription checkboxes remain preferences.
 
-See [Phase 2 operations and validation](docs/PHASE2.md) for setup, scopes, the exact workflow, consistency strategy and limitations. [Phase 1](docs/PHASE1.md) remains the historical account/OAuth report. Phase 2 awaits code review; Phase 3 requires separate approval.
+See [Phase 2 operations and validation](docs/PHASE2.md) for setup, scopes, the exact workflow, consistency strategy and limitations. [Phase 1](docs/PHASE1.md) remains the historical account/OAuth report. The [Phase 2 smoke and hardening report](docs/PHASE2_SMOKE.md) records the successful owner-reported Moodle 4.5 / Workspace smoke, explicit `es_mx` support and the inclusive local recurrence boundary. Phase 3 requires separate approval.
 
 See [Continuous integration](docs/CI.md) for the GitHub Actions checks, Moodle 4.5/5.0/5.1 matrix, local commands and pending remote verification.
 

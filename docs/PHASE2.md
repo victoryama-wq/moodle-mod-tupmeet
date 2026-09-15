@@ -6,7 +6,7 @@ Base aprobada: codex/fase-1-cuenta-maestra-oauth2, commit 4ea481547e41aa6fcd72e4
 Rama: codex/fase-2-calendar-meet.
 Versión: **2026091501**, release interna **0.3.0-alpha**.
 
-Implementación local pendiente de revisión y autorización para push. No se hizo merge, deploy ni release. No se modifica Moodle core, mod_googlemeet ni producción.
+Este documento conserva el informe técnico de la implementación inicial. La evidencia posterior del smoke Moodle 4.5 / Workspace y el hardening `2026091502 / 0.3.1-alpha` se registran en [PHASE2_SMOKE.md](PHASE2_SMOKE.md). No se modifica Moodle core, mod_googlemeet ni producción.
 
 Esta fase crea eventos Calendar y solicita su enlace Meet. No llama a Meet REST API ni Drive API. Grabación, transcripción y publicación automática siguen siendo preferencias sin activación.
 
@@ -161,7 +161,7 @@ No se eliminan archivos. No se modifican account_manager ni oauth_client_factory
 
 ## Riesgos y pendientes de aceptación
 
-- Falta smoke manual Workspace/Google real: consentimiento ampliado, creación, enlace, recurrencia, edición histórica y revocación/reconexión.
+- El responsable reportó smoke real satisfactorio de OAuth, creación Calendar, Meet, edición y recurrencia en Cancún; véase [la evidencia y pendientes específicos](PHASE2_SMOKE.md). No consta aceptación manual de edición con cuentas históricas ni revocación/reconexión.
 - La conferencia puede ser asíncrona. Cron debe funcionar; los fallos permanentes requieren corregir la causa.
 - Las ediciones afectan toda la serie; no una ocurrencia ni “esta y las siguientes”.
 - No se recuperan automáticamente eventos borrados manualmente en Google después de una sincronización confirmada.
