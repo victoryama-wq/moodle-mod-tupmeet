@@ -1,5 +1,18 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * View page for TUP Meet.
@@ -59,11 +72,14 @@ $table->data[] = [get_string('enddatetime', 'tupmeet'), userdate($tupmeet->endda
 $table->data[] = [get_string('isrecurring', 'tupmeet'), $tupmeet->isrecurring ? get_string('yes') : get_string('no')];
 if ($tupmeet->isrecurring) {
     $table->data[] = [get_string('recurrencedays', 'tupmeet'), implode(', ', $daylabels)];
-    $table->data[] = [get_string('recurrenceuntil', 'tupmeet'), userdate($tupmeet->recurrenceuntil, get_string('strftimedatefullshort', 'langconfig'))];
+    $table->data[] = [
+        get_string('recurrenceuntil', 'tupmeet'),
+        userdate($tupmeet->recurrenceuntil, get_string('strftimedatefullshort', 'langconfig')),
+    ];
 }
 $table->data[] = [get_string('autorecord', 'tupmeet'), $tupmeet->autorecord ? get_string('yes') : get_string('no')];
 $table->data[] = [get_string('publicationmode', 'tupmeet'), get_string('publication' . $tupmeet->publicationmode, 'tupmeet')];
 
 echo html_writer::table($table);
-echo $OUTPUT->notification(get_string('phase0notice', 'tupmeet'), 'info');
+echo $OUTPUT->notification(get_string('phase1notice', 'tupmeet'), 'info');
 echo $OUTPUT->footer();
