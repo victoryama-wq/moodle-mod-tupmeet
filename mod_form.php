@@ -1,5 +1,18 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Activity configuration form for TUP Meet.
@@ -13,7 +26,13 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/course/moodleform_mod.php');
 
+/**
+ * Scheduling and preferences form for local TUP Meet activities.
+ */
 class mod_tupmeet_mod_form extends moodleform_mod {
+    /**
+     * Define activity scheduling controls.
+     */
     public function definition() {
         $mform = $this->_form;
 
@@ -71,11 +90,20 @@ class mod_tupmeet_mod_form extends moodleform_mod {
         $this->add_action_buttons();
     }
 
+    /**
+     * Validate scheduling inputs.
+     *
+     * @param array $data Submitted form data
+     * @param array $files Submitted files
+     * @return array Validation errors
+     */
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
 
-        if (!empty($data['startdatetime']) && !empty($data['enddatetime']) &&
-                $data['enddatetime'] <= $data['startdatetime']) {
+        if (
+            !empty($data['startdatetime']) && !empty($data['enddatetime']) &&
+                $data['enddatetime'] <= $data['startdatetime']
+        ) {
             $errors['enddatetime'] = get_string('errorendbeforestart', 'tupmeet');
         }
 
@@ -95,8 +123,10 @@ class mod_tupmeet_mod_form extends moodleform_mod {
                 $errors['daymon'] = get_string('errorrecurrenceday', 'tupmeet');
             }
 
-            if (!empty($data['recurrenceuntil']) && !empty($data['startdatetime']) &&
-                    $data['recurrenceuntil'] < strtotime('today', $data['startdatetime'])) {
+            if (
+                !empty($data['recurrenceuntil']) && !empty($data['startdatetime']) &&
+                    $data['recurrenceuntil'] < strtotime('today', $data['startdatetime'])
+            ) {
                 $errors['recurrenceuntil'] = get_string('errorrecurrenceuntil', 'tupmeet');
             }
         }
@@ -104,6 +134,11 @@ class mod_tupmeet_mod_form extends moodleform_mod {
         return $errors;
     }
 
+    /**
+     * Restore weekday controls for an existing activity.
+     *
+     * @param array $defaultvalues Stored activity values
+     */
     public function data_preprocessing(&$defaultvalues) {
         if (empty($defaultvalues['recurrencedays'])) {
             return;
