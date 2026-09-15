@@ -5,6 +5,14 @@
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
  * Core callbacks for TUP Meet.
@@ -14,8 +22,12 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
+/**
+ * Describe supported activity features.
+ *
+ * @param string $feature Moodle feature name
+ * @return mixed Feature support
+ */
 function tupmeet_supports($feature) {
     if (defined('FEATURE_MOD_PURPOSE') && $feature === FEATURE_MOD_PURPOSE) {
         return defined('MOD_PURPOSE_COMMUNICATION') ? MOD_PURPOSE_COMMUNICATION : MOD_ARCHETYPE_OTHER;
@@ -40,27 +52,46 @@ function tupmeet_supports($feature) {
     }
 }
 
+/**
+ * Create a local activity with the configured institutional owner.
+ *
+ * @param stdClass $data Activity data
+ * @param moodleform|null $mform Activity form
+ * @return int Activity ID
+ */
 function tupmeet_add_instance($data, $mform = null) {
-    global $DB;
-
     $data->recurrencedays = tupmeet_encode_recurrence_days($data);
-    $data->accountid = 0;
     $data->timecreated = time();
     $data->timemodified = $data->timecreated;
 
-    return $DB->insert_record('tupmeet', $data);
+    return (new \mod_tupmeet\local\account\account_manager())->add_activity($data);
 }
 
+/**
+ * Update activity data while preserving ownership.
+ *
+ * @param stdClass $data Activity data
+ * @param moodleform|null $mform Activity form
+ * @return bool
+ */
 function tupmeet_update_instance($data, $mform = null) {
     global $DB;
 
     $data->id = $data->instance;
+    // Activity ownership is immutable, even if a caller supplies accountid.
+    unset($data->accountid);
     $data->recurrencedays = tupmeet_encode_recurrence_days($data);
     $data->timemodified = time();
 
     return $DB->update_record('tupmeet', $data);
 }
 
+/**
+ * Delete local activity data only.
+ *
+ * @param int $id Activity ID
+ * @return bool
+ */
 function tupmeet_delete_instance($id) {
     global $DB;
 
@@ -72,6 +103,14 @@ function tupmeet_delete_instance($id) {
     return true;
 }
 
+/**
+ * Record an activity view and completion.
+ *
+ * @param stdClass $tupmeet Activity
+ * @param stdClass $course Course
+ * @param stdClass $cm Course module
+ * @param context_module $context Module context
+ */
 function tupmeet_view($tupmeet, $course, $cm, $context) {
     $params = [
         'context' => $context,
@@ -87,6 +126,12 @@ function tupmeet_view($tupmeet, $course, $cm, $context) {
     $completion->set_module_viewed($cm);
 }
 
+/**
+ * Encode scheduling controls for local storage.
+ *
+ * @param stdClass $data Activity form data, with weekday controls removed in place
+ * @return string JSON weekdays
+ */
 function tupmeet_encode_recurrence_days($data) {
     $days = [];
     foreach (['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as $day) {
