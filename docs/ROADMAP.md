@@ -23,6 +23,8 @@ Deliverables:
 - Preserve previous accounts for historical activities.
 - Service class for authenticated system OAuth client.
 
+Implementation: `0.2.0-alpha`, plugin version `2026091500`. See [Phase 1](PHASE1.md) for validation evidence and the administrator acceptance checklist. External Google authorization and owner acceptance remain separate from automated tests. Phase 2 is blocked on explicit owner review and approval.
+
 ## Phase 2 — create meetings
 
 Priority: critical for Saturday sessions.
