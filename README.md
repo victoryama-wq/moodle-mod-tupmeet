@@ -27,6 +27,8 @@ Google calls are limited to Moodle OAuth2 authentication and OpenID userinfo ver
 
 See [Phase 1 operations and validation](docs/PHASE1.md) for setup, exact administrator workflow, tests and limitations. Phase 2 requires a separate review and approval.
 
+See [Continuous integration](docs/CI.md) for the GitHub Actions checks, Moodle 4.5/5.0/5.1 matrix, local commands and pending remote verification.
+
 ## Master-account principle
 
 The organizer account must never be hard-coded. Each activity retains the account identifier used when it was created. Changing the default master account affects only new activities. Moodle stores one system account per issuer, so each replacement institutional account needs a separate issuer. Reconnection must authorize the original Google identity. The plugin checks both its stable OpenID subject and verified email.
