@@ -1,0 +1,167 @@
+name: TUP Meet CI
+
+on:
+  push:
+    branches: ['codex/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PHP_VERSION: '8.3'
+  COMPOSER_VERSION: '2.10.3'
+  PLUGIN_CI_VERSION: '4.5.11'
+
+jobs:
+  quality:
+    name: QUALITY
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out plugin
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: plugin
+          persist-credentials: false
+
+      - name: Check whitespace in all tracked files
+        working-directory: plugin
+        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer:${{ env.COMPOSER_VERSION }}
+          extensions: intl, mbstring, xml, zip
+          coverage: none
+
+      - name: Locate Composer download cache
+        id: composer-cache
+        run: echo "dir=$(composer config --global cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php${{ env.PHP_VERSION }}-composer${{ env.COMPOSER_VERSION }}-pluginci${{ env.PLUGIN_CI_VERSION }}-quality-v1
+
+      - name: Install quality tools
+        # No JavaScript checks: skip local_ci's npm lifecycle script.
+        run: composer create-project --no-interaction --no-dev --prefer-dist --no-scripts moodlehq/moodle-plugin-ci ci "$PLUGIN_CI_VERSION"
+
+      - name: PHP syntax
+        run: php ci/bin/moodle-plugin-ci phplint ./plugin
+
+      - name: Moodle coding style
+        run: php ci/bin/moodle-plugin-ci phpcs --max-warnings 0 ./plugin
+
+      - name: Upgrade savepoints
+        run: php ci/bin/moodle-plugin-ci savepoints ./plugin
+
+  phpunit:
+    name: PHPUNIT (Moodle ${{ matrix.moodle }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - moodle: '4.5'
+            branch: MOODLE_405_STABLE
+            webroot: moodle
+          - moodle: '5.0'
+            branch: MOODLE_500_STABLE
+            webroot: moodle
+          - moodle: '5.1'
+            branch: MOODLE_501_STABLE
+            webroot: moodle/public
+    services:
+      mariadb:
+        image: mariadb:10.11.14@sha256:dbe56e20372fc6d6b8e0e396866ba89c4c7f128c38c4f59aaa54d957db95790c
+        env:
+          # Disposable runner only. Plugin CI creates the database itself.
+          MARIADB_ROOT_PASSWORD: moodle
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=30s
+    env:
+      MOODLE_BRANCH: ${{ matrix.branch }}
+      MOODLE_WEBROOT: ${{ matrix.webroot }}
+      DB: mariadb
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_NAME: moodle
+      DB_USER: root
+      DB_PASS: moodle
+    steps:
+      - name: Check out plugin
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: plugin
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          tools: composer:${{ env.COMPOSER_VERSION }}
+          extensions: curl, dom, exif, fileinfo, gd, intl, mbstring, mysqli, soap, sodium, xml, zip
+          ini-values: max_input_vars=5000, memory_limit=512M
+          coverage: none
+
+      - name: Locate Composer download cache
+        id: composer-cache
+        run: echo "dir=$(composer config --global cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php${{ env.PHP_VERSION }}-composer${{ env.COMPOSER_VERSION }}-pluginci${{ env.PLUGIN_CI_VERSION }}-${{ matrix.branch }}-v1
+
+      - name: Prepare installer
+        run: |
+          composer create-project --no-interaction --no-dev --prefer-dist --no-scripts moodlehq/moodle-plugin-ci ci "$PLUGIN_CI_VERSION"
+          sudo locale-gen en_AU.UTF-8
+          echo "NVM_DIR=$HOME/.nvm" >> "$GITHUB_ENV"
+          command -v mysql
+
+      - name: Install clean Moodle and initialize PHPUnit
+        run: php ci/bin/moodle-plugin-ci install --plugin ./plugin --no-plugin-node
+
+      - name: Verify layout and record runtime versions
+        run: |
+          test -f "$MOODLE_WEBROOT/mod/tupmeet/version.php"
+          test -f "$MOODLE_WEBROOT/admin/tool/phpunit/cli/util.php"
+          test -f moodle/phpunit.xml
+          test -f moodle/vendor/bin/phpunit
+          grep -F 'name="mod_tupmeet_testsuite"' moodle/phpunit.xml
+          git -C moodle rev-parse HEAD
+          php --version
+          composer --version
+          php moodle/vendor/bin/phpunit --version
+
+      - name: Validate plugin structure
+        if: matrix.moodle == '4.5'
+        run: php ci/bin/moodle-plugin-ci validate --moodle ./moodle ./plugin
+
+      - name: Run only TUP Meet tests (mocked Google boundary)
+        working-directory: moodle
+        run: php vendor/bin/phpunit --testsuite mod_tupmeet_testsuite --fail-on-warning --fail-on-risky --fail-on-incomplete --fail-on-skipped
