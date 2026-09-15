@@ -43,6 +43,11 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'timeverified' => 'privacy:metadata:timeverified',
         ], 'privacy:metadata:accounts');
         $collection->add_subsystem_link('core_oauth2', [], 'privacy:metadata:oauth2');
+        $collection->add_external_location_link('googlecalendar', [
+            'name' => 'privacy:metadata:calendarname',
+            'intro' => 'privacy:metadata:calendarintro',
+            'schedule' => 'privacy:metadata:calendarschedule',
+        ], 'privacy:metadata:googlecalendar');
         return $collection;
     }
 

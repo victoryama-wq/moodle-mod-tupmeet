@@ -63,7 +63,7 @@ mod_tupmeet
         |
         +--> account service --> Moodle OAuth2
         +--> calendar service --> Google Calendar API
-        +--> meet service -----> Google Meet REST API
+        +--> future meet service --> Google Meet REST API (Phase 3+)
         |
         v
   Moodle persistence
@@ -115,7 +115,24 @@ The privacy provider declares institutional identity metadata and the core OAuth
 
 ## Safety properties
 
-- No Google resources are deleted when a Moodle activity is deleted in Phase 0.
+- No Google resources are deleted when a Moodle activity is deleted.
 - Changing the active account never rewrites historical activity ownership automatically.
-- Synchronization will be designed to be idempotent.
+- Calendar synchronization uses a precommitted event ID, correlation marker and durable retries.
 - Recording publication and Google-file permissions are separate concerns.
+
+## Phase 2 scheduling boundary
+
+- `local/meeting/schedule`: validation, explicit Moodle timezone, RFC3339, weekly RRULE and next-session arithmetic.
+- `local/meeting/meeting_manager`: allowed form fields, immutable account, stable submission/event IDs, desired-state revision, persistence and task queue.
+- `local/google/calendar_service`: identity-checked native OAuth client; GET, INSERT and PATCH in the historical owner's primary calendar; safe errors and conferenceData.
+- `db/events.php` / `observer`: non-internal Moodle observers dispatched after commit attempt synchronization immediately.
+- `task/sync_meeting`: durable retry with native task backoff. Saved atomically with desired state, before any Google call.
+- `view.php` / POST-only `retry.php`: status, join link and teacher-controlled retry. No HTTP logic in pages or lib.php.
+
+The callbacks persist desired state and queue work within Moodle's transaction. The non-internal observer runs after commit, so successful conference generation normally provides the link on the first view. Interrupted requests and asynchronous conference generation continue through cron.
+
+Each form retains a random creationkey protected by a unique index. The event ID is assigned before HTTP; syncversion identifies the committed revision. GET by stable ID recovers timeouts and remote-success/local-write failures. The private tupmeet marker must match before adoption or update. Per-activity Moodle locks serialize remote reconciliation; conditional writes prevent an old response from marking a newer edit ready.
+
+Disabled historical registrations continue to supply Calendar scopes. The official callback returns the owned-events scope only for registered Google issuers. No Google resource deletion is implemented.
+
+Phase 2 adds timezone, nullable unique creationkey, syncversion and syncstatus to tupmeet. No new tables or token columns. Upgrade preserves timestamps, ownership and verified defaults. Legacy schedules use the site timezone and need review/save before creating Google events. Privacy metadata declares title, description and schedule transfer to Google Calendar. Full details: [Phase 2](PHASE2.md).

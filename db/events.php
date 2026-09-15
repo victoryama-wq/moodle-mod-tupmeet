@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Version information for TUP Meet.
+ * Calendar observers run outside the module transaction.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
@@ -24,8 +24,15 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091501;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.3.0-alpha';
+$observers = [
+    [
+        'eventname' => '\core\event\course_module_created',
+        'callback' => '\mod_tupmeet\observer::module_saved',
+        'internal' => false,
+    ],
+    [
+        'eventname' => '\core\event\course_module_updated',
+        'callback' => '\mod_tupmeet\observer::module_saved',
+        'internal' => false,
+    ],
+];

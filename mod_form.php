@@ -35,6 +35,11 @@ class mod_tupmeet_mod_form extends moodleform_mod {
      */
     public function definition() {
         $mform = $this->_form;
+        $timezone = \mod_tupmeet\local\meeting\schedule::timezone($this->current->timezone ?? null)->getName();
+        $dateoptions = ['timezone' => $timezone];
+        $mform->addElement('hidden', 'creationkey');
+        $mform->setType('creationkey', PARAM_ALPHANUM);
+        $mform->setDefault('creationkey', \mod_tupmeet\local\meeting\meeting_manager::new_key());
 
         $mform->addElement('header', 'general', get_string('general'));
         $mform->addElement('text', 'name', get_string('meetingname', 'tupmeet'), ['size' => '64']);
@@ -45,8 +50,9 @@ class mod_tupmeet_mod_form extends moodleform_mod {
         $this->standard_intro_elements(get_string('description'));
 
         $mform->addElement('header', 'scheduling', get_string('scheduling', 'tupmeet'));
-        $mform->addElement('date_time_selector', 'startdatetime', get_string('startdatetime', 'tupmeet'));
-        $mform->addElement('date_time_selector', 'enddatetime', get_string('enddatetime', 'tupmeet'));
+        $mform->addElement('static', 'schedulingzone', get_string('timezone', 'tupmeet'), s($timezone));
+        $mform->addElement('date_time_selector', 'startdatetime', get_string('startdatetime', 'tupmeet'), $dateoptions);
+        $mform->addElement('date_time_selector', 'enddatetime', get_string('enddatetime', 'tupmeet'), $dateoptions);
 
         $mform->addElement('advcheckbox', 'isrecurring', get_string('isrecurring', 'tupmeet'));
         $mform->setDefault('isrecurring', 0);
@@ -70,10 +76,11 @@ class mod_tupmeet_mod_form extends moodleform_mod {
             $mform->hideIf('day' . $key, 'isrecurring', 'notchecked');
         }
 
-        $mform->addElement('date_selector', 'recurrenceuntil', get_string('recurrenceuntil', 'tupmeet'));
+        $mform->addElement('date_selector', 'recurrenceuntil', get_string('recurrenceuntil', 'tupmeet'), $dateoptions);
         $mform->hideIf('recurrenceuntil', 'isrecurring', 'notchecked');
 
         $mform->addElement('header', 'meetsettings', get_string('meetsettings', 'tupmeet'));
+        $mform->addElement('static', 'preferencenotice', '', get_string('preferencesonly', 'tupmeet'));
         $mform->addElement('advcheckbox', 'autorecord', get_string('autorecord', 'tupmeet'));
         $mform->setDefault('autorecord', 1);
         $mform->addElement('advcheckbox', 'autotranscript', get_string('autotranscript', 'tupmeet'));
@@ -100,37 +107,24 @@ class mod_tupmeet_mod_form extends moodleform_mod {
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
 
-        if (
-            !empty($data['startdatetime']) && !empty($data['enddatetime']) &&
-                $data['enddatetime'] <= $data['startdatetime']
-        ) {
-            $errors['enddatetime'] = get_string('errorendbeforestart', 'tupmeet');
-        }
-
-        if (!empty($data['isrecurring'])) {
-            if (empty($data['recurrenceinterval']) || (int) $data['recurrenceinterval'] < 1) {
-                $errors['recurrenceinterval'] = get_string('errorrecurrenceinterval', 'tupmeet');
-            }
-
-            $hasday = false;
-            foreach (['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as $day) {
-                if (!empty($data['day' . $day])) {
-                    $hasday = true;
-                    break;
-                }
-            }
-            if (!$hasday) {
-                $errors['daymon'] = get_string('errorrecurrenceday', 'tupmeet');
-            }
-
-            if (
-                !empty($data['recurrenceuntil']) && !empty($data['startdatetime']) &&
-                    $data['recurrenceuntil'] < strtotime('today', $data['startdatetime'])
-            ) {
-                $errors['recurrenceuntil'] = get_string('errorrecurrenceuntil', 'tupmeet');
+        $meeting = (object) $data;
+        $meeting->timezone = \mod_tupmeet\local\meeting\schedule::timezone($this->current->timezone ?? null)->getName();
+        $days = [];
+        foreach (array_keys(\mod_tupmeet\local\meeting\schedule::DAYS) as $day) {
+            if (!empty($data['day' . $day])) {
+                $days[] = $day;
             }
         }
-
+        $meeting->recurrencedays = json_encode($days);
+        $errors = array_merge($errors, \mod_tupmeet\local\meeting\schedule::errors($meeting));
+        if (empty($this->current->instance)) {
+            global $DB;
+            if (empty($data['creationkey']) || !preg_match('/^[a-f0-9]{64}$/D', $data['creationkey'])) {
+                $errors['name'] = get_string('invalidrequest', 'tupmeet');
+            } else if ($DB->record_exists('tupmeet', ['creationkey' => $data['creationkey']])) {
+                $errors['name'] = get_string('duplicatesubmission', 'tupmeet');
+            }
+        }
         return $errors;
     }
 

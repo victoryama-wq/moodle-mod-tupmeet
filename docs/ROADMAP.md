@@ -23,7 +23,7 @@ Deliverables:
 - Preserve previous accounts for historical activities.
 - Service class for authenticated system OAuth client.
 
-Implementation: `0.2.0-alpha`, plugin version `2026091500`. See [Phase 1](PHASE1.md) for validation evidence and the administrator acceptance checklist. External Google authorization and owner acceptance remain separate from automated tests. Phase 2 is blocked on explicit owner review and approval.
+Implementation: `0.2.0-alpha`, plugin version `2026091500`. The owner approved Phase 1 as the base for Phase 2. See [Phase 1](PHASE1.md) for its historical evidence and administrator checklist.
 
 ## Phase 2 — create meetings
 
@@ -37,7 +37,11 @@ Deliverables:
 - Persist Calendar event id, Meet URI/code, and account id.
 - Safe update of schedule.
 
+Implementation: `0.3.0-alpha`, plugin version `2026091501`. Calendar conferenceData generates the Meet link in this phase, as explicitly authorized. See [Phase 2](PHASE2.md). Local implementation awaits code review and authorization before push.
+
 ## Phase 3 — Meet configuration
+
+Status: not started; requires explicit approval after Phase 2 review.
 
 Priority: high.
 

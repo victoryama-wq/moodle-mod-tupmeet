@@ -15,17 +15,26 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Version information for TUP Meet.
+ * Explicit teacher retry after correcting authorization or a conference failure.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+require('../../config.php');
+require_once(__DIR__ . '/lib.php');
 
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091501;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.3.0-alpha';
+$id = required_param('id', PARAM_INT);
+$cm = get_coursemodule_from_id('tupmeet', $id, 0, false, MUST_EXIST);
+$course = get_course($cm->course);
+require_login($course, true, $cm);
+require_capability('moodle/course:manageactivities', context_module::instance($cm->id));
+require_sesskey();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    throw new moodle_exception('invalidrequest', 'mod_tupmeet');
+}
+$manager = new \mod_tupmeet\local\meeting\meeting_manager();
+$manager->update((object) ['id' => $cm->instance]);
+$manager->synchronize((int) $cm->instance);
+redirect(new moodle_url('/mod/tupmeet/view.php', ['id' => $cm->id]));

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/tupmeet/db" VERSION="2026091500" COMMENT="XMLDB file for mod_tupmeet"
+<XMLDB PATH="mod/tupmeet/db" VERSION="2026091501" COMMENT="XMLDB file for mod_tupmeet"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
   <TABLES>
@@ -25,6 +25,10 @@
         <FIELD NAME="meetingcode" TYPE="char" LENGTH="64" NOTNULL="false"/>
         <FIELD NAME="meeturi" TYPE="char" LENGTH="255" NOTNULL="false"/>
         <FIELD NAME="lastsync" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timezone" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT="UTC"/>
+        <FIELD NAME="creationkey" TYPE="char" LENGTH="64" NOTNULL="false" COMMENT="Stable nonsecret submission key"/>
+        <FIELD NAME="syncversion" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="legacy"/>
+        <FIELD NAME="syncstatus" TYPE="char" LENGTH="12" NOTNULL="true" DEFAULT="legacy"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
@@ -35,6 +39,7 @@
       <INDEXES>
         <INDEX NAME="accountid" UNIQUE="false" FIELDS="accountid"/>
         <INDEX NAME="calendareventid" UNIQUE="false" FIELDS="calendareventid"/>
+        <INDEX NAME="creationkey" UNIQUE="true" FIELDS="creationkey"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="tupmeet_accounts" COMMENT="Master Google accounts known by TUP Meet; historical accounts are retained">

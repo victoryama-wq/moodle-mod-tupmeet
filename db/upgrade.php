@@ -47,5 +47,27 @@ function xmldb_tupmeet_upgrade($oldversion): bool {
         $DB->set_field('tupmeet_accounts', 'connectionstatus', 'pending');
         upgrade_mod_savepoint(true, 2026091500, 'tupmeet');
     }
+    if ($oldversion < 2026091501) {
+        $table = new xmldb_table('tupmeet');
+        $fields = [
+            new xmldb_field('timezone', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, 'UTC', 'lastsync'),
+            new xmldb_field('creationkey', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'timezone'),
+            new xmldb_field('syncversion', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, 'legacy', 'creationkey'),
+            new xmldb_field('syncstatus', XMLDB_TYPE_CHAR, '12', null, XMLDB_NOTNULL, null, 'legacy', 'syncversion'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        $index = new xmldb_index('creationkey', XMLDB_INDEX_UNIQUE, ['creationkey']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        // Older phases did not record the author's timezone. Preserve all instants and owners.
+        // Use the configured Moodle site timezone for legacy schedules, without creating events.
+        $DB->set_field('tupmeet', 'timezone', \core_date::get_server_timezone(), ['syncstatus' => 'legacy']);
+        upgrade_mod_savepoint(true, 2026091501, 'tupmeet');
+    }
     return true;
 }

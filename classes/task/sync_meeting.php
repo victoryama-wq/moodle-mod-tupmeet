@@ -14,18 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace mod_tupmeet\task;
+
 /**
- * Version information for TUP Meet.
+ * Durable Calendar retry, using Moodle's native task retry/backoff mechanism.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091501;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.3.0-alpha';
+class sync_meeting extends \core\task\adhoc_task {
+    /**
+     * Synchronize the latest desired state, or retry with a sanitized task error.
+     */
+    public function execute(): void {
+        $id = (int) $this->get_custom_data()->id;
+        if (!(new \mod_tupmeet\local\meeting\meeting_manager())->synchronize($id)) {
+            throw new \moodle_exception('syncpending', 'mod_tupmeet');
+        }
+    }
+}

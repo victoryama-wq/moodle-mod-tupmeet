@@ -2,15 +2,18 @@
 
 TUP Meet is an institutional Moodle activity module intended to create and manage Google Meet sessions from Moodle while maintaining institutional control of the organizer account and recording history.
 
-## Phase 1 status
+## Phase 2 status
 
-This branch implements institutional master-account administration on top of the Phase 0 activity baseline:
+This branch preserves Phase 1 institutional account administration and adds Calendar/Meet scheduling:
 
 - Site administration > Plugins > Activity modules > TUP Meet.
 - Registration using an existing Google OAuth2 issuer, native Moodle connection/reconnection, and live OpenID identity verification.
 - Explicit selection of one enabled default, with immutable historical activity ownership.
 - Separate account/OAuth services; no OAuth credentials in plugin tables.
-- Upgrade from `2026091400` to `2026091500` (`0.2.0-alpha`).
+- Calendar primary-event creation, whole-series edits, weekly RRULE and automatic Google Meet conference requests.
+- Explicit Moodle timezone, stable event identity, post-commit synchronization and durable task retries.
+- Visible pending/error states and a validated Google Meet join button.
+- Version `2026091501` (`0.3.0-alpha`), with fresh-install and Phase 0/1 upgrade paths.
 
 The original activity baseline provides:
 
@@ -23,9 +26,9 @@ The original activity baseline provides:
 - Database fields reserved for Google Calendar/Meet identifiers.
 - Master-account history table designed so the active account can change without breaking historical activities.
 
-Google calls are limited to Moodle OAuth2 authentication and OpenID userinfo verification. **No Calendar events, Meet links, recording automation, Drive integration, or legacy migration are implemented.**
+Google calls use Moodle OAuth2, OpenID userinfo and Calendar API. **Meet REST recording/transcription configuration, recording publication, Drive integration and legacy migration are not implemented.** Recording/transcription checkboxes remain preferences.
 
-See [Phase 1 operations and validation](docs/PHASE1.md) for setup, exact administrator workflow, tests and limitations. Phase 2 requires a separate review and approval.
+See [Phase 2 operations and validation](docs/PHASE2.md) for setup, scopes, the exact workflow, consistency strategy and limitations. [Phase 1](docs/PHASE1.md) remains the historical account/OAuth report. Phase 2 awaits code review; Phase 3 requires separate approval.
 
 ## Master-account principle
 

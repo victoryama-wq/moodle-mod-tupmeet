@@ -48,6 +48,13 @@ final class upgrade_test extends \advanced_testcase {
                     $record = $DB->get_record($table->getName(), ['id' => $id]);
                     $this->assertNull($record->googlesub);
                     $this->assertEquals(0, $record->timeverified);
+                } else if ($table->getName() === 'tupmeet_installtest') {
+                    $id = $DB->insert_record($table->getName(), (object) ['name' => 'Fresh']);
+                    $record = $DB->get_record($table->getName(), ['id' => $id]);
+                    $this->assertSame('UTC', $record->timezone);
+                    $this->assertNull($record->creationkey);
+                    $this->assertSame('legacy', $record->syncstatus);
+                    $this->assertSame('legacy', $record->syncversion);
                 }
             } finally {
                 $dbman->drop_table($table);
@@ -87,5 +94,43 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertEquals(0, $DB->get_field('tupmeet', 'accountid', ['id' => $unassigned]));
         $this->assertTrue($dbman->field_exists($table, 'googlesub'));
         $this->assertTrue($dbman->field_exists($table, 'timeverified'));
+    }
+
+    /**
+     * Phase 1 upgrades preserve verified defaults, ownership and absolute timestamps.
+     */
+    public function test_phase1_upgrade_preserves_verified_default(): void {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/upgradelib.php');
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $accountid = $DB->insert_record('tupmeet_accounts', (object) [
+            'displayname' => 'Verified fixture', 'googleemail' => 'verified@example.invalid',
+            'googlesub' => 'subject-fixture', 'issuerid' => 123, 'enabled' => 1, 'isdefault' => 1,
+            'connectionstatus' => 'verified', 'timeverified' => 1789398000,
+        ]);
+        $id = $DB->insert_record('tupmeet', (object) [
+            'name' => 'Historical schedule', 'accountid' => $accountid,
+            'startdatetime' => 1789398000, 'enddatetime' => 1789401600,
+        ]);
+        $before = $DB->get_record('tupmeet_accounts', ['id' => $accountid]);
+        $table = new \xmldb_table('tupmeet');
+        $dbman = $DB->get_manager();
+        $dbman->drop_index($table, new \xmldb_index('creationkey', XMLDB_INDEX_UNIQUE, ['creationkey']));
+        foreach (['syncstatus', 'syncversion', 'creationkey', 'timezone'] as $field) {
+            $dbman->drop_field($table, new \xmldb_field($field));
+        }
+        set_config('timezone', 'America/Cancun');
+        set_config('version', 2026091500, 'mod_tupmeet');
+        $this->assertTrue(xmldb_tupmeet_upgrade(2026091500));
+        $this->assertEquals($before, $DB->get_record('tupmeet_accounts', ['id' => $accountid]));
+        $meeting = $DB->get_record('tupmeet', ['id' => $id]);
+        $this->assertEquals($accountid, $meeting->accountid);
+        $this->assertEquals(1789398000, $meeting->startdatetime);
+        $this->assertEquals(1789401600, $meeting->enddatetime);
+        $this->assertSame('America/Cancun', $meeting->timezone);
+        $this->assertSame('legacy', $meeting->syncstatus);
+        $this->assertNull($meeting->calendareventid);
+        $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
     }
 }

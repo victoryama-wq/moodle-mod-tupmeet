@@ -64,7 +64,7 @@ function tupmeet_add_instance($data, $mform = null) {
     $data->timecreated = time();
     $data->timemodified = $data->timecreated;
 
-    return (new \mod_tupmeet\local\account\account_manager())->add_activity($data);
+    return (new \mod_tupmeet\local\meeting\meeting_manager())->create($data);
 }
 
 /**
@@ -75,15 +75,19 @@ function tupmeet_add_instance($data, $mform = null) {
  * @return bool
  */
 function tupmeet_update_instance($data, $mform = null) {
-    global $DB;
-
     $data->id = $data->instance;
     // Activity ownership is immutable, even if a caller supplies accountid.
     unset($data->accountid);
-    $data->recurrencedays = tupmeet_encode_recurrence_days($data);
+    $hasdays = isset($data->recurrencedays);
+    foreach (array_keys(\mod_tupmeet\local\meeting\schedule::DAYS) as $day) {
+        $hasdays = $hasdays || property_exists($data, 'day' . $day);
+    }
+    if ($hasdays) {
+        $data->recurrencedays = tupmeet_encode_recurrence_days($data);
+    }
     $data->timemodified = time();
 
-    return $DB->update_record('tupmeet', $data);
+    return (new \mod_tupmeet\local\meeting\meeting_manager())->update($data);
 }
 
 /**
@@ -134,13 +138,33 @@ function tupmeet_view($tupmeet, $course, $cm, $context) {
  */
 function tupmeet_encode_recurrence_days($data) {
     $days = [];
+    $hascontrols = false;
     foreach (['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as $day) {
         $property = 'day' . $day;
+        $hascontrols = $hascontrols || property_exists($data, $property);
         if (!empty($data->{$property})) {
             $days[] = $day;
         }
         unset($data->{$property});
     }
 
-    return json_encode($days);
+    return !$hascontrols && isset($data->recurrencedays) ? $data->recurrencedays : json_encode($days);
+}
+
+/**
+ * Add Calendar scopes only to Google issuers registered as TUP Meet owners.
+ *
+ * @param \core\oauth2\issuer $issuer Native issuer
+ * @return string Space-delimited extra system scopes
+ */
+function tupmeet_oauth2_system_scopes(\core\oauth2\issuer $issuer): string {
+    global $DB;
+    if (
+        $issuer->get('servicetype') !== 'google' ||
+            !$DB->get_manager()->table_exists('tupmeet_accounts') ||
+            !$DB->record_exists('tupmeet_accounts', ['issuerid' => $issuer->get('id')])
+    ) {
+        return '';
+    }
+    return \mod_tupmeet\local\google\calendar_service::SCOPE;
 }

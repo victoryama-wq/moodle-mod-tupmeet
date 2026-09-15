@@ -67,19 +67,41 @@ if (!empty($tupmeet->intro)) {
 
 $table = new html_table();
 $table->attributes['class'] = 'generaltable';
-$table->data[] = [get_string('startdatetime', 'tupmeet'), userdate($tupmeet->startdatetime)];
-$table->data[] = [get_string('enddatetime', 'tupmeet'), userdate($tupmeet->enddatetime)];
+$next = \mod_tupmeet\local\meeting\schedule::next_session($tupmeet, time());
+$table->data[] = [
+    get_string('nextsession', 'tupmeet'),
+    $next === null ? get_string('nosession', 'tupmeet') : userdate($next, '', $tupmeet->timezone),
+];
+$table->data[] = [get_string('timezone', 'tupmeet'), s($tupmeet->timezone)];
+$table->data[] = [get_string('startdatetime', 'tupmeet'), userdate($tupmeet->startdatetime, '', $tupmeet->timezone)];
+$table->data[] = [get_string('enddatetime', 'tupmeet'), userdate($tupmeet->enddatetime, '', $tupmeet->timezone)];
 $table->data[] = [get_string('isrecurring', 'tupmeet'), $tupmeet->isrecurring ? get_string('yes') : get_string('no')];
 if ($tupmeet->isrecurring) {
     $table->data[] = [get_string('recurrencedays', 'tupmeet'), implode(', ', $daylabels)];
+    $table->data[] = [get_string('recurrenceinterval', 'tupmeet'), (int) $tupmeet->recurrenceinterval];
     $table->data[] = [
         get_string('recurrenceuntil', 'tupmeet'),
-        userdate($tupmeet->recurrenceuntil, get_string('strftimedatefullshort', 'langconfig')),
+        userdate($tupmeet->recurrenceuntil, get_string('strftimedatefullshort', 'langconfig'), $tupmeet->timezone),
     ];
 }
-$table->data[] = [get_string('autorecord', 'tupmeet'), $tupmeet->autorecord ? get_string('yes') : get_string('no')];
-$table->data[] = [get_string('publicationmode', 'tupmeet'), get_string('publication' . $tupmeet->publicationmode, 'tupmeet')];
-
 echo html_writer::table($table);
-echo $OUTPUT->notification(get_string('phase1notice', 'tupmeet'), 'info');
+if (
+    $tupmeet->syncstatus === 'ready' &&
+        \mod_tupmeet\local\google\calendar_service::valid_meet_uri($tupmeet->meeturi ?? '')
+) {
+    echo html_writer::link(new moodle_url($tupmeet->meeturi), get_string('joinmeet', 'tupmeet'), [
+        'class' => 'btn btn-primary', 'target' => '_blank', 'rel' => 'noopener noreferrer',
+    ]);
+} else {
+    $status = in_array($tupmeet->syncstatus, ['pending', 'error', 'legacy'], true) ? $tupmeet->syncstatus : 'error';
+    echo $OUTPUT->notification(get_string('sync' . $status, 'tupmeet'), $status === 'error' ? 'warning' : 'info');
+    if (has_capability('moodle/course:manageactivities', $context) && $status !== 'legacy') {
+        echo $OUTPUT->single_button(
+            new moodle_url('/mod/tupmeet/retry.php', ['id' => $cm->id]),
+            get_string('retrysync', 'tupmeet'),
+            'post'
+        );
+    }
+}
+echo $OUTPUT->notification(get_string('preferencesonly', 'tupmeet'), 'info');
 echo $OUTPUT->footer();

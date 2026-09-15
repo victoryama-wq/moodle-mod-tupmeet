@@ -129,7 +129,9 @@ final class account_manager_test extends \advanced_testcase {
         $first = $this->account();
         $second = $this->account();
         $this->manager->set_default($first);
-        $activity = $this->manager->add_activity((object) ['name' => 'First activity']);
+        $activity = $this->manager->add_activity((object) [
+            'name' => 'First activity', 'startdatetime' => time(), 'enddatetime' => time() + HOURSECS,
+        ]);
         $this->manager->set_default($second);
         $next = $this->manager->add_activity((object) ['name' => 'Second activity', 'accountid' => $first]);
         $this->assertEquals($first, $DB->get_field('tupmeet', 'accountid', ['id' => $activity]));

@@ -14,18 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace mod_tupmeet;
+
 /**
- * Version information for TUP Meet.
+ * Immediate best-effort synchronization after Moodle commits the module save.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091501;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.3.0-alpha';
+class observer {
+    /**
+     * Dispatch only TUP Meet changes; the durable task survives interrupted observers.
+     *
+     * @param \core\event\base $event Committed module creation or update
+     */
+    public static function module_saved(\core\event\base $event): void {
+        if (($event->other['modulename'] ?? '') !== 'tupmeet') {
+            return;
+        }
+        try {
+            (new \mod_tupmeet\local\meeting\meeting_manager())->synchronize((int) $event->other['instanceid']);
+        } catch (\Throwable $e) {
+            // Pending state and the committed task remain. Never expose sensitive upstream errors.
+            return;
+        }
+    }
+}

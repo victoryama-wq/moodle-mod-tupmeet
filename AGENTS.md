@@ -30,8 +30,8 @@
 
 - Phase 0: installable activity skeleton, form, schema, architecture documentation.
 - Phase 1: master-account administration and Moodle OAuth2 integration.
-- Phase 2: Google Calendar event creation and recurrence.
-- Phase 3: Meet conference generation and automatic recording configuration.
+- Phase 2: Google Calendar event creation, recurrence and Meet conferenceData generation.
+- Phase 3: Meet REST configuration, automatic recording and transcription where supported.
 - Phase 4: conference/recording synchronization via Meet REST API.
 - Phase 5: recording review/publication UI and scheduled synchronization.
 - Phase 6: migration assistant for legacy `mod_googlemeet` activities.
