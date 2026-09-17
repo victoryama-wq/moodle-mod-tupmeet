@@ -55,6 +55,10 @@ final class upgrade_test extends \advanced_testcase {
                     $this->assertNull($record->creationkey);
                     $this->assertSame('legacy', $record->syncstatus);
                     $this->assertSame('legacy', $record->syncversion);
+                    $this->assertSame('unconfigured', $record->meetconfigstatus);
+                    $this->assertSame('legacy', $record->meetconfigversion);
+                    $this->assertEquals(0, $record->meetconfigattempts);
+                    $this->assertEquals(0, $record->meetconfigmodified);
                 }
             } finally {
                 $dbman->drop_table($table);
@@ -132,5 +136,42 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertSame('legacy', $meeting->syncstatus);
         $this->assertNull($meeting->calendareventid);
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
+    }
+    /**
+     * Phase 2 activities and owners are retained without automatically enabling real artifacts.
+     */
+    public function test_phase2_upgrade_preserves_ready_meeting(): void {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/upgradelib.php');
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $table = new \xmldb_table('tupmeet');
+        foreach (['meetconfigstatus', 'meetconfigversion', 'meetconfigmodified', 'meetconfigattempts'] as $field) {
+            $DB->get_manager()->drop_field($table, new \xmldb_field($field));
+        }
+        $accountid = $DB->insert_record('tupmeet_accounts', (object) [
+            'displayname' => 'Historical', 'googleemail' => 'historical@example.invalid',
+            'googlesub' => 'synthetic-subject', 'enabled' => 1, 'isdefault' => 1,
+        ]);
+        $saved = (object) [
+            'name' => 'Phase 2', 'accountid' => $accountid, 'calendareventid' => 'stableevent',
+            'meeturi' => 'https://meet.google.com/abc-defg-hij', 'meetingcode' => 'abc-defg-hij',
+            'meetspacename' => 'spaces/Permanent', 'syncstatus' => 'ready', 'syncversion' => 'oldrevision',
+            'autorecord' => 1, 'autotranscript' => 1, 'timezone' => 'America/Cancun',
+        ];
+        $saved->id = $DB->insert_record('tupmeet', $saved);
+        set_config('version', 2026091502, 'mod_tupmeet');
+        $this->assertTrue(xmldb_tupmeet_upgrade(2026091502));
+        $after = $DB->get_record('tupmeet', ['id' => $saved->id]);
+        foreach ((array) $saved as $field => $value) {
+            $this->assertEquals($value, $after->{$field}, $field);
+        }
+        $this->assertSame('unconfigured', $after->meetconfigstatus);
+        $this->assertSame('legacy', $after->meetconfigversion);
+        $this->assertEquals(0, $after->meetconfigattempts);
+        $this->assertEquals(0, $after->meetconfigmodified);
+        $this->assertEquals(1, $DB->get_field('tupmeet_accounts', 'isdefault', ['id' => $accountid]));
+        $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
+        $this->assertEquals(2026091700, get_config('mod_tupmeet', 'version'));
     }
 }

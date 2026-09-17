@@ -14,18 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace mod_tupmeet\task;
+
 /**
- * Version information for TUP Meet.
+ * Retry Meet configuration independently of Calendar, with a bounded per-revision budget.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091700;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.4.0-alpha';
+class sync_meet_config extends \core\task\adhoc_task {
+    /**
+     * Retry the same task through Moodle backoff; never enqueue a retry from this worker.
+     */
+    public function execute(): void {
+        $data = $this->get_custom_data();
+        if (!(new \mod_tupmeet\local\meeting\meet_config_manager())->synchronize((int) $data->id, $data->version)) {
+            throw new \moodle_exception('meetconfigfailed', 'mod_tupmeet');
+        }
+    }
+}

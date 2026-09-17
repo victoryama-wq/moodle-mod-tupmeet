@@ -85,23 +85,5 @@ if ($tupmeet->isrecurring) {
     ];
 }
 echo html_writer::table($table);
-if (
-    $tupmeet->syncstatus === 'ready' &&
-        \mod_tupmeet\local\google\calendar_service::valid_meet_uri($tupmeet->meeturi ?? '')
-) {
-    echo html_writer::link(new moodle_url($tupmeet->meeturi), get_string('joinmeet', 'tupmeet'), [
-        'class' => 'btn btn-primary', 'target' => '_blank', 'rel' => 'noopener noreferrer',
-    ]);
-} else {
-    $status = in_array($tupmeet->syncstatus, ['pending', 'error', 'legacy'], true) ? $tupmeet->syncstatus : 'error';
-    echo $OUTPUT->notification(get_string('sync' . $status, 'tupmeet'), $status === 'error' ? 'warning' : 'info');
-    if (has_capability('moodle/course:manageactivities', $context) && $status !== 'legacy') {
-        echo $OUTPUT->single_button(
-            new moodle_url('/mod/tupmeet/retry.php', ['id' => $cm->id]),
-            get_string('retrysync', 'tupmeet'),
-            'post'
-        );
-    }
-}
-echo $OUTPUT->notification(get_string('preferencesonly', 'tupmeet'), 'info');
+echo \mod_tupmeet\output\meeting_status::render($tupmeet, $context, (int) $cm->id);
 echo $OUTPUT->footer();

@@ -80,7 +80,7 @@ class mod_tupmeet_mod_form extends moodleform_mod {
         $mform->hideIf('recurrenceuntil', 'isrecurring', 'notchecked');
 
         $mform->addElement('header', 'meetsettings', get_string('meetsettings', 'tupmeet'));
-        $mform->addElement('static', 'preferencenotice', '', get_string('preferencesonly', 'tupmeet'));
+        $mform->addElement('static', 'preferencenotice', '', get_string('artifactnotice', 'tupmeet'));
         $mform->addElement('advcheckbox', 'autorecord', get_string('autorecord', 'tupmeet'));
         $mform->setDefault('autorecord', 1);
         $mform->addElement('advcheckbox', 'autotranscript', get_string('autotranscript', 'tupmeet'));

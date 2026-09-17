@@ -74,6 +74,7 @@ class meeting_manager {
                 throw new \moodle_exception('duplicatesubmission', 'mod_tupmeet');
             }
             $this->prepare($record);
+            meet_config_manager::prepare($record);
             $record->timecreated = time();
             $record->timemodified = time();
             // Account selection and insert retain Phase 1's lock, verification and history guarantees.
@@ -114,16 +115,37 @@ class meeting_manager {
         $transaction = $DB->start_delegated_transaction();
         try {
             $record = $DB->get_record('tupmeet', ['id' => $data->id], '*', MUST_EXIST);
+            $calendarchanged = $record->syncstatus !== 'ready';
             foreach (self::EDITABLE as $field) {
                 if (property_exists($data, $field)) {
+                    if (
+                        !in_array($field, ['autorecord', 'autotranscript', 'publicationmode'], true) &&
+                            (string) $record->{$field} !== (string) $data->{$field}
+                    ) {
+                        $calendarchanged = true;
+                    }
                     $record->{$field} = $data->{$field};
                 }
             }
             schedule::payload($record);
-            $this->prepare($record);
+            if ($calendarchanged) {
+                $this->prepare($record);
+            }
+            meet_config_manager::prepare($record);
             $record->timemodified = time();
-            $DB->update_record('tupmeet', $record);
-            $this->queue($record);
+            // Do not rewrite Google response fields from a snapshot taken before concurrent HTTP.
+            $fields = array_merge(self::EDITABLE, [
+                'id', 'timemodified', 'meetconfigversion', 'meetconfigstatus', 'meetconfigattempts', 'meetconfigmodified',
+            ]);
+            if ($calendarchanged) {
+                $fields = array_merge($fields, ['creationkey', 'calendareventid', 'syncversion', 'syncstatus']);
+            }
+            $DB->update_record('tupmeet', (object) array_intersect_key((array) $record, array_flip($fields)));
+            if ($calendarchanged) {
+                $this->queue($record);
+            } else {
+                meet_config_manager::queue($record);
+            }
             $transaction->allow_commit();
             return true;
         } catch (\Throwable $e) {
@@ -177,11 +199,22 @@ class meeting_manager {
                 $params[$field] = $value;
             }
             // An edit made during HTTP remains pending; an old response must not mark it ready.
-            $DB->execute(
-                'UPDATE {tupmeet} SET ' . implode(', ', $assignments) . ' WHERE id = :id AND syncversion = :version',
-                $params
-            );
-            return $DB->get_field('tupmeet', 'syncstatus', ['id' => $id]) === 'ready';
+            $transaction = $DB->start_delegated_transaction();
+            try {
+                $DB->execute(
+                    'UPDATE {tupmeet} SET ' . implode(', ', $assignments) . ' WHERE id = :id AND syncversion = :version',
+                    $params
+                );
+                $current = $DB->get_record('tupmeet', ['id' => $id]);
+                if ($current) {
+                    // Calendar readiness and durable Meet work commit together. No HTTP in this transaction.
+                    meet_config_manager::queue($current);
+                }
+                $transaction->allow_commit();
+                return $current && $current->syncstatus === 'ready';
+            } catch (\Throwable $e) {
+                $transaction->rollback($e);
+            }
         } finally {
             $lock->release();
         }

@@ -37,4 +37,5 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $manager = new \mod_tupmeet\local\meeting\meeting_manager();
 $manager->update((object) ['id' => $cm->instance]);
 $manager->synchronize((int) $cm->instance);
+(new \mod_tupmeet\local\meeting\meet_config_manager())->synchronize((int) $cm->instance);
 redirect(new moodle_url('/mod/tupmeet/view.php', ['id' => $cm->id]));

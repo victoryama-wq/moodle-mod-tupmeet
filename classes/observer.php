@@ -34,7 +34,10 @@ class observer {
             return;
         }
         try {
-            (new \mod_tupmeet\local\meeting\meeting_manager())->synchronize((int) $event->other['instanceid']);
+            $id = (int) $event->other['instanceid'];
+            if ((new \mod_tupmeet\local\meeting\meeting_manager())->synchronize($id)) {
+                (new \mod_tupmeet\local\meeting\meet_config_manager())->synchronize($id);
+            }
         } catch (\Throwable $e) {
             // Pending state and the committed task remain. Never expose sensitive upstream errors.
             return;

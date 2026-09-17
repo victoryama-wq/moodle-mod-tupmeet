@@ -37,11 +37,11 @@ Deliverables:
 - Persist Calendar event id, Meet URI/code, and account id.
 - Safe update of schedule.
 
-Implementation: `0.3.0-alpha`, plugin version `2026091501`. Calendar conferenceData generates the Meet link in this phase, as explicitly authorized. See [Phase 2](PHASE2.md). Local implementation awaits code review and authorization before push.
+Implementation and hardening: `0.3.1-alpha`, plugin version `2026091502`, approved as the Phase 3 base. Calendar conferenceData generates the Meet link. See [Phase 2](PHASE2.md) and the [reported smoke and localization hardening](PHASE2_SMOKE.md).
 
 ## Phase 3 — Meet configuration
 
-Status: not started; requires explicit approval after Phase 2 review.
+Status: implemented locally on `codex/fase-3-meet-auto-artifacts`, pending review, authorized push/remote CI and real Google smoke. Version `2026091700 / 0.4.0-alpha`. See [Phase 3](PHASE3.md).
 
 Priority: high.
 

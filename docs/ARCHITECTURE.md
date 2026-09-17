@@ -63,7 +63,7 @@ mod_tupmeet
         |
         +--> account service --> Moodle OAuth2
         +--> calendar service --> Google Calendar API
-        +--> future meet service --> Google Meet REST API (Phase 3+)
+        +--> meet service --> Google Meet REST API settings (Phase 3)
         |
         v
   Moodle persistence
@@ -136,3 +136,11 @@ Each form retains a random creationkey protected by a unique index. The event ID
 Disabled historical registrations continue to supply Calendar scopes. The official callback returns the owned-events scope only for registered Google issuers. No Google resource deletion is implemented.
 
 Phase 2 adds timezone, nullable unique creationkey, syncversion and syncstatus to tupmeet. No new tables or token columns. Upgrade preserves timestamps, ownership and verified defaults. Legacy schedules use the site timezone and need review/save before creating Google events. Privacy metadata declares title, description and schedule transfer to Google Calendar. Full details: [Phase 2](PHASE2.md).
+
+## Phase 3 independent Meet configuration
+
+`local/google/meet_service` resolves the Calendar code once, validates the permanent Space name and configures only two artifact leaf fields through native OAuth GET/PATCH. `local/meeting/meet_config_manager` persists the name before PATCH and owns a separate revision, status, confirmation timestamp and five-attempt budget. No recording/transcript retrieval or Drive calls exist in this phase.
+
+`task/sync_meet_config` is separate from Calendar work. Calendar readiness and the next Meet task commit atomically; network calls remain after commit. Both workers share the per-activity lock, and revision-conditional writes prevent stale responses from confirming newer edits. Artifact-only saves keep Calendar ready and its IDs unchanged. Teacher-only diagnostics cannot remove the student join link.
+
+Version `2026091700` adds four Meet configuration fields without reassigning identities or activating historical preferences during upgrade. Explicit save/retry adopts the new behavior. The additional `meetings.space.settings` scope is limited to registered Google issuers, including historical accounts. Details and limitations: [Phase 3](PHASE3.md).

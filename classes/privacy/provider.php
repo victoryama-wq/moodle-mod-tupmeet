@@ -48,6 +48,9 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'intro' => 'privacy:metadata:calendarintro',
             'schedule' => 'privacy:metadata:calendarschedule',
         ], 'privacy:metadata:googlecalendar');
+        $collection->add_external_location_link('googlemeet', [
+            'artifactconfig' => 'privacy:metadata:artifactconfig',
+        ], 'privacy:metadata:googlemeet');
         return $collection;
     }
 

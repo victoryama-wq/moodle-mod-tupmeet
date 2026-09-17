@@ -69,5 +69,22 @@ function xmldb_tupmeet_upgrade($oldversion): bool {
         $DB->set_field('tupmeet', 'timezone', \core_date::get_server_timezone(), ['syncstatus' => 'legacy']);
         upgrade_mod_savepoint(true, 2026091501, 'tupmeet');
     }
+    if ($oldversion < 2026091700) {
+        $table = new xmldb_table('tupmeet');
+        $fields = [
+            new xmldb_field('meetconfigstatus', XMLDB_TYPE_CHAR, '12', null, XMLDB_NOTNULL, null, 'unconfigured', 'syncstatus'),
+            new xmldb_field('meetconfigversion', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, 'legacy', 'meetconfigstatus'),
+            new xmldb_field('meetconfigmodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'meetconfigversion'),
+            new xmldb_field('meetconfigattempts', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0', 'meetconfigmodified'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        // Preserve all preferences and Google identities. A save/retry explicitly adopts Phase 3.
+        // Do not queue work or contact Google during upgrade.
+        upgrade_mod_savepoint(true, 2026091700, 'tupmeet');
+    }
     return true;
 }

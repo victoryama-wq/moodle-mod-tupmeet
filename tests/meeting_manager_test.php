@@ -342,12 +342,23 @@ final class meeting_manager_test extends \advanced_testcase {
     public function test_scopes_only_for_registered_issuers(): void {
         $registered = new \core\oauth2\issuer($this->accounts->get_account($this->owner)->issuerid);
         $other = \mod_tupmeet\testing\issuer::create();
-        $this->assertSame(calendar_service::SCOPE, tupmeet_oauth2_system_scopes($registered));
+        $scopes = calendar_service::SCOPE . ' ' . \mod_tupmeet\local\google\meet_service::SCOPE;
+        $this->assertSame($scopes, tupmeet_oauth2_system_scopes($registered));
         $this->assertSame('', tupmeet_oauth2_system_scopes($other));
         $this->assertStringContainsString(calendar_service::SCOPE, \core\oauth2\api::get_system_scopes_for_issuer($registered));
         $this->assertStringNotContainsString(calendar_service::SCOPE, \core\oauth2\api::get_system_scopes_for_issuer($other));
         $this->accounts->set_enabled($this->owner, false);
-        $this->assertSame(calendar_service::SCOPE, tupmeet_oauth2_system_scopes($registered));
+        $this->assertSame($scopes, tupmeet_oauth2_system_scopes($registered));
+        $this->assertStringContainsString(
+            \mod_tupmeet\local\google\meet_service::SCOPE,
+            \core\oauth2\api::get_system_scopes_for_issuer($registered)
+        );
+        $this->assertStringNotContainsString(
+            \mod_tupmeet\local\google\meet_service::SCOPE,
+            \core\oauth2\api::get_system_scopes_for_issuer($other)
+        );
+        $registered->set('servicetype', 'facebook');
+        $this->assertSame('', tupmeet_oauth2_system_scopes($registered));
     }
 
     /**

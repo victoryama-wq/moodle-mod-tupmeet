@@ -152,7 +152,7 @@ function tupmeet_encode_recurrence_days($data) {
 }
 
 /**
- * Add Calendar scopes only to Google issuers registered as TUP Meet owners.
+ * Add Calendar and Meet settings scopes only to Google issuers registered as TUP Meet owners.
  *
  * @param \core\oauth2\issuer $issuer Native issuer
  * @return string Space-delimited extra system scopes
@@ -166,5 +166,5 @@ function tupmeet_oauth2_system_scopes(\core\oauth2\issuer $issuer): string {
     ) {
         return '';
     }
-    return \mod_tupmeet\local\google\calendar_service::SCOPE;
+    return \mod_tupmeet\local\google\calendar_service::SCOPE . ' ' . \mod_tupmeet\local\google\meet_service::SCOPE;
 }

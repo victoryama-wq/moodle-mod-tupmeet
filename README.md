@@ -2,9 +2,9 @@
 
 TUP Meet is an institutional Moodle activity module intended to create and manage Google Meet sessions from Moodle while maintaining institutional control of the organizer account and recording history.
 
-## Phase 2 status
+## Phase 3 status
 
-This branch preserves Phase 1 institutional account administration and adds Calendar/Meet scheduling:
+This branch preserves institutional account administration and Calendar/Meet scheduling, and configures automatic artifacts:
 
 - Site administration > Plugins > Activity modules > TUP Meet.
 - Registration using an existing Google OAuth2 issuer, native Moodle connection/reconnection, and live OpenID identity verification.
@@ -13,7 +13,9 @@ This branch preserves Phase 1 institutional account administration and adds Cale
 - Calendar primary-event creation, whole-series edits, weekly RRULE and automatic Google Meet conference requests.
 - Explicit Moodle timezone, stable event identity, post-commit synchronization and durable task retries.
 - Visible pending/error states and a validated Google Meet join button.
-- Version `2026091502` (`0.3.1-alpha`), with fresh-install and Phase 0/1 upgrade paths; this patch adds Mexican Spanish without schema changes.
+- Meet REST configuration of automatic recording/transcription on the existing Calendar-created Space.
+- Permanent Space identity, independent configuration status and bounded durable retries; failures retain the join link.
+- Version `2026091700` (`0.4.0-alpha`), with fresh-install and Phase 0/1/2 upgrade paths.
 
 The original activity baseline provides:
 
@@ -26,9 +28,9 @@ The original activity baseline provides:
 - Database fields reserved for Google Calendar/Meet identifiers.
 - Master-account history table designed so the active account can change without breaking historical activities.
 
-Google calls use Moodle OAuth2, OpenID userinfo and Calendar API. **Meet REST recording/transcription configuration, recording publication, Drive integration and legacy migration are not implemented.** Recording/transcription checkboxes remain preferences.
+Google calls use Moodle OAuth2, OpenID userinfo, Calendar API and Meet REST settings. **Recording/transcript retrieval, publication, Drive integration, attendance, Smart Notes and legacy migration are not implemented.** Publication remains a preference. Google starts automatic artifact generation only when someone with the necessary privileges joins, subject to Workspace licensing/policies; configured does not mean a recording already exists.
 
-See [Phase 2 operations and validation](docs/PHASE2.md) for setup, scopes, the exact workflow, consistency strategy and limitations. [Phase 1](docs/PHASE1.md) remains the historical account/OAuth report. The [Phase 2 smoke and hardening report](docs/PHASE2_SMOKE.md) records the successful owner-reported Moodle 4.5 / Workspace smoke, explicit `es_mx` support and the inclusive local recurrence boundary. Phase 3 requires separate approval.
+See [Phase 3](docs/PHASE3.md) for architecture, independent states, the new OAuth scope, manual reauthorization and the pending real smoke procedure. Historical activities require an explicit save/retry to apply their preferences after upgrade. [Phase 2](docs/PHASE2.md), [its smoke and hardening report](docs/PHASE2_SMOKE.md) and [Phase 1](docs/PHASE1.md) retain the earlier evidence. Phase 3 remains local pending review; later phases require separate approval.
 
 See [Continuous integration](docs/CI.md) for the GitHub Actions checks, Moodle 4.5/5.0/5.1 matrix, local commands and pending remote verification.
 
