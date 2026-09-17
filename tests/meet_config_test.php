@@ -196,7 +196,11 @@ final class meet_config_test extends \advanced_testcase {
      */
     private function meeting(int $record = 1, int $transcript = 0, bool $recurring = false): int {
         $start = (new \DateTimeImmutable('2026-10-10T09:00:00-05:00'))->getTimestamp();
+        $course = $this->getDataGenerator()->create_course();
+        $teacher = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($teacher->id, $course->id, 'editingteacher');
         $id = $this->meetings->create((object) [
+            'course' => $course->id, 'cohostuserid' => $teacher->id,
             'name' => 'Synthetic meeting', 'startdatetime' => $start, 'enddatetime' => $start + HOURSECS,
             'autorecord' => $record, 'autotranscript' => $transcript,
             'isrecurring' => (int) $recurring, 'recurrenceinterval' => 1,

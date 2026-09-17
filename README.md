@@ -2,7 +2,7 @@
 
 TUP Meet is an institutional Moodle activity module intended to create and manage Google Meet sessions from Moodle while maintaining institutional control of the organizer account and recording history.
 
-## Phase 3 status
+## Phase 3.2 status
 
 This branch preserves institutional account administration and Calendar/Meet scheduling, and configures automatic artifacts:
 
@@ -15,7 +15,8 @@ This branch preserves institutional account administration and Calendar/Meet sch
 - Visible pending/error states and a validated Google Meet join button.
 - Meet REST configuration of automatic recording/transcription on the existing Calendar-created Space.
 - Permanent Space identity, independent configuration status and bounded durable retries; failures retain the join link.
-- Version `2026091700` (`0.4.0-alpha`), with fresh-install and Phase 0/1/2 upgrade paths.
+- One server-validated Moodle teacher configured as COHOST, with independent states and bounded retries.
+- Version `2026091701` (`0.4.1-alpha`), with fresh-install and Phase 0/1/2/3 upgrade paths.
 
 The original activity baseline provides:
 
@@ -28,9 +29,9 @@ The original activity baseline provides:
 - Database fields reserved for Google Calendar/Meet identifiers.
 - Master-account history table designed so the active account can change without breaking historical activities.
 
-Google calls use Moodle OAuth2, OpenID userinfo, Calendar API and Meet REST settings. **Recording/transcript retrieval, publication, Drive integration, attendance, Smart Notes and legacy migration are not implemented.** Publication remains a preference. Google starts automatic artifact generation only when someone with the necessary privileges joins, subject to Workspace licensing/policies; configured does not mean a recording already exists.
+Google calls use Moodle OAuth2, OpenID userinfo, Calendar API and Meet REST settings and members. **Recording/transcript retrieval, publication, Drive integration, attendance, Smart Notes and legacy migration are not implemented.** Publication remains a preference. Google starts automatic artifact generation only when someone with the necessary privileges joins, subject to Workspace licensing/policies; configured does not mean a recording already exists.
 
-See [Phase 3](docs/PHASE3.md) for architecture, independent states, the new OAuth scope, manual reauthorization and the pending real smoke procedure. Historical activities require an explicit save/retry to apply their preferences after upgrade. [Phase 2](docs/PHASE2.md), [its smoke and hardening report](docs/PHASE2_SMOKE.md) and [Phase 1](docs/PHASE1.md) retain the earlier evidence. Phase 3 remains local pending review; later phases require separate approval.
+See [Phase 3](docs/PHASE3.md) for architecture, independent states, the new OAuth scope, manual reauthorization and the pending real smoke procedure. Historical activities require an explicit save/retry to apply their preferences after upgrade. [Phase 2](docs/PHASE2.md), [its smoke and hardening report](docs/PHASE2_SMOKE.md) and [Phase 1](docs/PHASE1.md) retain the earlier evidence. Phase 3 was approved and passed remote CI; [Phase 3.2](docs/PHASE3_2.md) is local pending review and real smoke. Later phases require separate approval.
 
 See [Continuous integration](docs/CI.md) for the GitHub Actions checks, Moodle 4.5/5.0/5.1 matrix, local commands and pending remote verification.
 

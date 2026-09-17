@@ -41,7 +41,7 @@ Implementation and hardening: `0.3.1-alpha`, plugin version `2026091502`, approv
 
 ## Phase 3 — Meet configuration
 
-Status: implemented locally on `codex/fase-3-meet-auto-artifacts`, pending review, authorized push/remote CI and real Google smoke. Version `2026091700 / 0.4.0-alpha`. See [Phase 3](PHASE3.md).
+Status: approved on `codex/fase-3-meet-auto-artifacts`; remote CI passed for `096d6bb22679fdb63c63681388f711fd9ba17f2f`. Real Google smoke remains separate. Version `2026091700 / 0.4.0-alpha`. See [Phase 3](PHASE3.md).
 
 Priority: high.
 
@@ -51,6 +51,10 @@ Deliverables:
 - Automatic-recording preference where supported.
 - Transcript preference where supported.
 - Clear capability/error messages if Workspace policy prevents an option.
+
+## Phase 3.2 — automatic teacher cohost
+
+Implemented locally on `codex/fase-3-2-cohost`, version `2026091701 / 0.4.1-alpha`. One eligible Moodle teacher, official members API, independent status/retries, immutable initial selection and privacy handling. Preserves Phase 3 recording/transcription. Pending review, authorized remote validation and Calendar-space smoke. See [Phase 3.2](PHASE3_2.md).
 
 ## Phase 4 — recordings
 

@@ -14,18 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace mod_tupmeet\task;
+
 /**
- * Version information for TUP Meet.
+ * Retry cohost membership independently of Calendar and artifact configuration, with a bounded per-revision budget.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091701;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.4.1-alpha';
+class sync_cohost extends \core\task\adhoc_task {
+    /**
+     * Retry the same task through Moodle backoff; never enqueue a retry from this worker.
+     */
+    public function execute(): void {
+        $data = $this->get_custom_data();
+        if (!(new \mod_tupmeet\local\meeting\cohost_manager())->synchronize((int) $data->id, $data->version)) {
+            throw new \moodle_exception('cohostfailed', 'mod_tupmeet');
+        }
+    }
+}

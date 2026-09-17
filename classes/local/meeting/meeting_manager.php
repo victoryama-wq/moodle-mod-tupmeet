@@ -81,6 +81,7 @@ class meeting_manager {
             $record->id = (new account_manager())->add_activity($record);
             $stored = $DB->get_record('tupmeet', ['id' => $record->id], '*', MUST_EXIST);
             schedule::payload($stored);
+            $stored = cohost_manager::save($stored, (int) ($data->cohostuserid ?? 0), true);
             $this->queue($stored);
             $transaction->allow_commit();
             return (int) $stored->id;
@@ -115,6 +116,7 @@ class meeting_manager {
         $transaction = $DB->start_delegated_transaction();
         try {
             $record = $DB->get_record('tupmeet', ['id' => $data->id], '*', MUST_EXIST);
+            cohost_manager::save($record, isset($data->cohostuserid) ? (int) $data->cohostuserid : null);
             $calendarchanged = $record->syncstatus !== 'ready';
             foreach (self::EDITABLE as $field) {
                 if (property_exists($data, $field)) {
@@ -146,6 +148,7 @@ class meeting_manager {
             } else {
                 meet_config_manager::queue($record);
             }
+            cohost_manager::queue($DB->get_record('tupmeet', ['id' => $record->id], '*', MUST_EXIST));
             $transaction->allow_commit();
             return true;
         } catch (\Throwable $e) {
@@ -209,6 +212,7 @@ class meeting_manager {
                 if ($current) {
                     // Calendar readiness and durable Meet work commit together. No HTTP in this transaction.
                     meet_config_manager::queue($current);
+                    cohost_manager::queue($current);
                 }
                 $transaction->allow_commit();
                 return $current && $current->syncstatus === 'ready';

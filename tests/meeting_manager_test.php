@@ -151,7 +151,11 @@ final class meeting_manager_test extends \advanced_testcase {
      * @return \stdClass Data
      */
     private function data(): \stdClass {
+        $course = $this->getDataGenerator()->create_course();
+        $teacher = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($teacher->id, $course->id, 'editingteacher');
         return (object) [
+            'course' => $course->id, 'cohostuserid' => $teacher->id,
             'name' => 'Synthetic meeting', 'startdatetime' => 1789398000, 'enddatetime' => 1789401600,
             'intro' => '<p>Synthetic agenda</p>', 'creationkey' => meeting_manager::new_key(),
         ];
@@ -342,7 +346,8 @@ final class meeting_manager_test extends \advanced_testcase {
     public function test_scopes_only_for_registered_issuers(): void {
         $registered = new \core\oauth2\issuer($this->accounts->get_account($this->owner)->issuerid);
         $other = \mod_tupmeet\testing\issuer::create();
-        $scopes = calendar_service::SCOPE . ' ' . \mod_tupmeet\local\google\meet_service::SCOPE;
+        $scopes = calendar_service::SCOPE . ' ' . \mod_tupmeet\local\google\meet_service::SCOPE . ' ' .
+            \mod_tupmeet\local\google\member_service::SCOPE;
         $this->assertSame($scopes, tupmeet_oauth2_system_scopes($registered));
         $this->assertSame('', tupmeet_oauth2_system_scopes($other));
         $this->assertStringContainsString(calendar_service::SCOPE, \core\oauth2\api::get_system_scopes_for_issuer($registered));

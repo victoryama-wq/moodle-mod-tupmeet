@@ -35,7 +35,7 @@ class meeting_status {
      * @return string HTML
      */
     public static function render(\stdClass $meeting, \context_module $context, int $cmid): string {
-        global $OUTPUT;
+        global $OUTPUT, $DB;
         $manage = has_capability('moodle/course:manageactivities', $context);
         $ready = $meeting->syncstatus === 'ready' && calendar_service::valid_meet_uri($meeting->meeturi ?? '');
         $retryurl = new \moodle_url('/mod/tupmeet/retry.php', ['id' => $cmid]);
@@ -64,11 +64,24 @@ class meeting_status {
             $label = $status === 'ready' ? (empty($meeting->{$field}) ? 'artifactoff' : 'artifacton') : 'meetconfig' . $status;
             $table->data[] = [get_string($field, 'tupmeet'), get_string($label, 'tupmeet')];
         }
+        $cohoststatus = $meeting->cohoststatus ?? 'unconfigured';
+        if (!in_array($cohoststatus, ['unconfigured', 'pending', 'ready', 'error'], true)) {
+            $cohoststatus = 'error';
+        }
+        $teacher = empty($meeting->cohostuserid) ? null : $DB->get_record('user', ['id' => $meeting->cohostuserid]);
+        $table->data[] = [get_string('cohostuserid', 'tupmeet'), $teacher ? s(fullname($teacher)) : '—'];
+        $table->data[] = [get_string('cohoststatus', 'tupmeet'), get_string('cohost' . $cohoststatus, 'tupmeet')];
         $html .= \html_writer::table($table);
         if ($ready && in_array($status, ['error', 'unconfigured'], true)) {
             $html .= $OUTPUT->notification(get_string('meetconfig' . $status . 'notice', 'tupmeet'), 'warning');
             $html .= $OUTPUT->single_button($retryurl, get_string('retryartifactconfig', 'tupmeet'), 'post');
         }
+        if ($ready && $cohoststatus === 'error' && !empty($meeting->cohostuserid)) {
+            $html .= $OUTPUT->notification(get_string('cohostfailed', 'tupmeet'), 'warning');
+            $cohosturl = new \moodle_url('/mod/tupmeet/retry.php', ['id' => $cmid, 'target' => 'cohost']);
+            $html .= $OUTPUT->single_button($cohosturl, get_string('retrycohost', 'tupmeet'), 'post');
+        }
+        $html .= $OUTPUT->notification(get_string('cohostnotice', 'tupmeet'), 'info');
         $html .= $OUTPUT->notification(get_string('artifactnotice', 'tupmeet'), 'info');
         return $html;
     }

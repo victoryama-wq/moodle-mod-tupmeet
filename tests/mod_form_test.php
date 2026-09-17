@@ -42,12 +42,15 @@ final class mod_form_test extends \advanced_testcase {
         $USER->timezone = 'America/Cancun';
         set_config('forcetimezone', 99);
         $course = $this->getDataGenerator()->create_course();
+        $teacher = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($teacher->id, $course->id, 'editingteacher');
         $PAGE->set_course($course);
         $previous = date_default_timezone_get();
         date_default_timezone_set('UTC');
         try {
             $key = meeting_manager::new_key();
             \mod_tupmeet_mod_form::mock_submit([
+                'cohostuserid' => $teacher->id,
                 'name' => 'Form timezone fixture', 'creationkey' => $key,
                 'visible' => 1, 'modulename' => 'tupmeet', 'instance' => 0, 'coursemodule' => 0,
                 'course' => $course->id, 'section' => 0, 'completion' => 0, 'cmidnumber' => '',

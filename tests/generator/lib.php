@@ -33,6 +33,11 @@ class mod_tupmeet_generator extends testing_module_generator {
         $record = (object) (array) $record;
         $record->startdatetime = $record->startdatetime ?? time();
         $record->enddatetime = $record->enddatetime ?? $record->startdatetime + HOURSECS;
+        if (!isset($record->cohostuserid)) {
+            $teacher = $this->datagenerator->create_user();
+            $this->datagenerator->enrol_user($teacher->id, $record->course, 'editingteacher');
+            $record->cohostuserid = $teacher->id;
+        }
         return parent::create_instance($record, $options);
     }
 }

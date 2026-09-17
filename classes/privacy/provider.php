@@ -22,7 +22,7 @@ use core_privacy\local\request\core_userlist_provider;
 use core_privacy\local\request\plugin\provider as plugin_provider;
 
 /**
- * Institutional metadata is not linked to a Moodle user ID.
+ * Institutional ownership and minimal Moodle teacher membership metadata.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
@@ -42,6 +42,13 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'googlesub' => 'privacy:metadata:googlesub',
             'timeverified' => 'privacy:metadata:timeverified',
         ], 'privacy:metadata:accounts');
+        $collection->add_database_table('tupmeet', [
+            'cohostuserid' => 'privacy:metadata:cohostuserid',
+            'cohostemail' => 'privacy:metadata:cohostemail',
+            'cohostmembername' => 'privacy:metadata:cohostmembername',
+            'cohoststatus' => 'privacy:metadata:cohoststatus',
+            'cohostmodified' => 'privacy:metadata:cohostmodified',
+        ], 'privacy:metadata:cohost');
         $collection->add_subsystem_link('core_oauth2', [], 'privacy:metadata:oauth2');
         $collection->add_external_location_link('googlecalendar', [
             'name' => 'privacy:metadata:calendarname',
@@ -50,57 +57,128 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         ], 'privacy:metadata:googlecalendar');
         $collection->add_external_location_link('googlemeet', [
             'artifactconfig' => 'privacy:metadata:artifactconfig',
+            'email' => 'privacy:metadata:cohostemail',
         ], 'privacy:metadata:googlemeet');
         return $collection;
     }
 
     /**
-     * Shared institutional accounts have no Moodle user relationship.
+     * Find module contexts containing the teacher's stored identity.
      *
-     * @param int $userid Moodle user ID
+     * @param int $userid Moodle user
      * @return \core_privacy\local\request\contextlist
      */
     public static function get_contexts_for_userid(int $userid): \core_privacy\local\request\contextlist {
-        return new \core_privacy\local\request\contextlist();
+        $contexts = new \core_privacy\local\request\contextlist();
+        $contexts->add_from_sql(
+            'SELECT ctx.id FROM {context} ctx
+               JOIN {course_modules} cm ON cm.id = ctx.instanceid AND ctx.contextlevel = :level
+               JOIN {modules} m ON m.id = cm.module AND m.name = :module
+               JOIN {tupmeet} t ON t.id = cm.instance WHERE t.cohostuserid = :userid',
+            ['level' => CONTEXT_MODULE, 'module' => 'tupmeet', 'userid' => $userid]
+        );
+        return $contexts;
     }
 
     /**
-     * No Moodle users are associated with institutional account records.
+     * Resolve only this plugin's module context, never a same-numbered instance in another module.
+     *
+     * @param \context $context Approved context
+     * @return \stdClass|null Activity
+     */
+    private static function activity(\context $context): ?\stdClass {
+        global $DB;
+        if (!$context instanceof \context_module) {
+            return null;
+        }
+        $cm = get_coursemodule_from_id('tupmeet', $context->instanceid);
+        return $cm ? ($DB->get_record('tupmeet', ['id' => $cm->instance]) ?: null) : null;
+    }
+
+    /**
+     * Register the selected teacher in the module context.
      *
      * @param \core_privacy\local\request\userlist $userlist User list
      */
     public static function get_users_in_context(\core_privacy\local\request\userlist $userlist) {
+        $record = self::activity($userlist->get_context());
+        if (!empty($record->cohostuserid)) {
+            $userlist->add_user((int) $record->cohostuserid);
+        }
     }
 
     /**
-     * No user-owned records to export.
+     * Export only the approved teacher's membership data, not the institutional owner's identity.
      *
      * @param \core_privacy\local\request\approved_contextlist $contextlist Approved contexts
      */
     public static function export_user_data(\core_privacy\local\request\approved_contextlist $contextlist) {
+        foreach ($contextlist->get_contexts() as $context) {
+            $record = self::activity($context);
+            if ($record && (int) $record->cohostuserid === (int) $contextlist->get_user()->id) {
+                $data = (object) array_intersect_key((array) $record, array_flip([
+                    'cohostuserid', 'cohostemail', 'cohostmembername', 'cohoststatus', 'cohostmodified',
+                ]));
+                \core_privacy\local\request\writer::with_context($context)->export_data(
+                    [get_string('cohostuserid', 'tupmeet')],
+                    $data
+                );
+            }
+        }
     }
 
     /**
-     * No user-owned records; shared ownership history must be retained.
+     * Erase local personal data and invalidate workers. Never revoke remote privileges implicitly.
      *
-     * @param \context $context Context
+     * @param \stdClass $record Approved activity snapshot
+     */
+    private static function erase(\stdClass $record): void {
+        global $DB;
+        // Keep the nonpersonal lock tombstone: erasure must not enable granting a second cohost.
+        $DB->execute(
+            'UPDATE {tupmeet} SET cohostuserid = 0, cohostemail = NULL, cohostmembername = NULL,
+                cohoststatus = :status, cohostversion = :version, cohostattempts = 0, cohostmodified = 0
+              WHERE id = :id AND cohostuserid = :userid',
+            ['status' => 'unconfigured', 'version' => bin2hex(random_bytes(16)),
+                'id' => $record->id, 'userid' => $record->cohostuserid]
+        );
+    }
+
+    /**
+     * Erase teacher identity in an approved module without touching Calendar/artifacts or accounts.
+     *
+     * @param \context $context Approved context
      */
     public static function delete_data_for_all_users_in_context(\context $context) {
+        $record = self::activity($context);
+        if ($record && $record->cohostuserid) {
+            self::erase($record);
+        }
     }
 
     /**
-     * No user-owned records to delete.
+     * Erase only the approved user's local cohost data.
      *
      * @param \core_privacy\local\request\approved_contextlist $contextlist Approved contexts
      */
     public static function delete_data_for_user(\core_privacy\local\request\approved_contextlist $contextlist) {
+        foreach ($contextlist->get_contexts() as $context) {
+            $record = self::activity($context);
+            if ($record && (int) $record->cohostuserid === (int) $contextlist->get_user()->id) {
+                self::erase($record);
+            }
+        }
     }
 
     /**
-     * No user-owned records to delete.
+     * Erase only listed users within the approved context.
      *
      * @param \core_privacy\local\request\approved_userlist $userlist Approved users
      */
     public static function delete_data_for_users(\core_privacy\local\request\approved_userlist $userlist) {
+        $record = self::activity($userlist->get_context());
+        if ($record && in_array((int) $record->cohostuserid, $userlist->get_userids())) {
+            self::erase($record);
+        }
     }
 }

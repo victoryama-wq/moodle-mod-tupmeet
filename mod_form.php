@@ -86,6 +86,25 @@ class mod_tupmeet_mod_form extends moodleform_mod {
         $mform->addElement('advcheckbox', 'autotranscript', get_string('autotranscript', 'tupmeet'));
         $mform->setDefault('autotranscript', 0);
 
+        // A stored selection is immutable, including uncertain remote outcomes and privacy erasure.
+        if (!empty($this->current->cohostlocked)) {
+            $mform->addElement(
+                'static',
+                'cohostlockednotice',
+                get_string('cohostuserid', 'tupmeet'),
+                get_string('cohostlocked', 'tupmeet')
+            );
+        } else {
+            $courseid = (int) $this->get_course()->id;
+            $options = \mod_tupmeet\local\meeting\cohost_identity::options($courseid);
+            $mform->addElement('select', 'cohostuserid', get_string('cohostuserid', 'tupmeet'), $options);
+            $mform->setType('cohostuserid', PARAM_INT);
+            if (empty($this->current->instance)) {
+                $mform->setDefault('cohostuserid', \mod_tupmeet\local\meeting\cohost_identity::default_user($courseid));
+            }
+            $mform->addHelpButton('cohostuserid', 'cohostuserid', 'tupmeet');
+        }
+        $mform->addElement('static', 'cohostnotice', '', get_string('cohostnotice', 'tupmeet'));
         $publicationoptions = [
             'manual' => get_string('publicationmanual', 'tupmeet'),
             'automatic' => get_string('publicationautomatic', 'tupmeet'),
@@ -123,6 +142,24 @@ class mod_tupmeet_mod_form extends moodleform_mod {
                 $errors['name'] = get_string('invalidrequest', 'tupmeet');
             } else if ($DB->record_exists('tupmeet', ['creationkey' => $data['creationkey']])) {
                 $errors['name'] = get_string('duplicatesubmission', 'tupmeet');
+            }
+        }
+        if (isset($data['cohostuserid']) || empty($this->current->instance)) {
+            try {
+                if (
+                    !empty($this->current->cohostlocked) &&
+                        (int) ($data['cohostuserid'] ?? 0) !== (int) $this->current->cohostuserid
+                ) {
+                    throw new \moodle_exception('cohostlocked', 'mod_tupmeet');
+                }
+                if (!empty($data['cohostuserid']) || empty($this->current->instance)) {
+                    \mod_tupmeet\local\meeting\cohost_identity::resolve(
+                        (int) $this->get_course()->id,
+                        (int) ($data['cohostuserid'] ?? 0)
+                    );
+                }
+            } catch (\moodle_exception $e) {
+                $errors['cohostuserid'] = get_string('cohostinvalid', 'tupmeet');
             }
         }
         return $errors;

@@ -59,6 +59,9 @@ final class upgrade_test extends \advanced_testcase {
                     $this->assertSame('legacy', $record->meetconfigversion);
                     $this->assertEquals(0, $record->meetconfigattempts);
                     $this->assertEquals(0, $record->meetconfigmodified);
+                    $this->assertSame('unconfigured', $record->cohoststatus);
+                    $this->assertEquals(0, $record->cohostuserid);
+                    $this->assertNull($record->cohostemail);
                 }
             } finally {
                 $dbman->drop_table($table);
@@ -172,6 +175,44 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertEquals(0, $after->meetconfigmodified);
         $this->assertEquals(1, $DB->get_field('tupmeet_accounts', 'isdefault', ['id' => $accountid]));
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
-        $this->assertEquals(2026091700, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026091701, get_config('mod_tupmeet', 'version'));
+    }
+    /**
+     * A Phase 3 upgrade preserves all known metadata and never selects or synchronizes a teacher.
+     */
+    public function test_phase3_upgrade_cohost_is_unconfigured(): void {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/upgradelib.php');
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $fields = ['cohostuserid', 'cohostemail', 'cohostmembername', 'cohoststatus', 'cohostversion',
+            'cohostattempts', 'cohostmodified', 'cohostlocked'];
+        $table = new \xmldb_table('tupmeet');
+        foreach (array_reverse($fields) as $field) {
+            $DB->get_manager()->drop_field($table, new \xmldb_field($field));
+        }
+        $id = $DB->insert_record('tupmeet', (object) [
+            'name' => 'Phase 3', 'accountid' => 321, 'meetspacename' => 'spaces/Stable_1',
+            'calendareventid' => 'stableevent', 'meeturi' => 'https://meet.google.com/abc-defg-hij',
+            'meetingcode' => 'abc-defg-hij', 'syncstatus' => 'ready', 'meetconfigstatus' => 'ready',
+            'autorecord' => 1, 'autotranscript' => 1, 'meetconfigversion' => 'oldrevision',
+        ]);
+        $before = $DB->get_record('tupmeet', ['id' => $id]);
+        set_config('version', 2026091700, 'mod_tupmeet');
+        $this->assertTrue(xmldb_tupmeet_upgrade(2026091700));
+        $after = $DB->get_record('tupmeet', ['id' => $id]);
+        foreach ((array) $before as $field => $value) {
+            $this->assertSame($value, $after->{$field}, $field);
+        }
+        $this->assertEquals(0, $after->cohostuserid);
+        $this->assertNull($after->cohostemail);
+        $this->assertNull($after->cohostmembername);
+        $this->assertSame('unconfigured', $after->cohoststatus);
+        $this->assertSame('legacy', $after->cohostversion);
+        $this->assertEquals(0, $after->cohostlocked);
+        $this->assertEquals(0, $after->cohostattempts);
+        $this->assertEquals(0, $after->cohostmodified);
+        $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
+        $this->assertEquals(2026091701, get_config('mod_tupmeet', 'version'));
     }
 }
