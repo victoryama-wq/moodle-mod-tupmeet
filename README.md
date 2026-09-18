@@ -2,7 +2,11 @@
 
 TUP Meet is an institutional Moodle activity module intended to create and manage Google Meet sessions from Moodle while maintaining institutional control of the organizer account and recording history.
 
-## Phase 3.2.1 status
+## Phase 3.3 experimental / staging-only status
+
+Version `2026091800` (`0.5.0-alpha-poc`) adds an isolated, site-administrator-only [Meet-first experiment](docs/PHASE3_3_POC.md). Every external step requires an explicit protected POST. It does not replace the normal Calendar-first activity workflow. Native Calendar association of a Meet-created Space and real cohost/recording behavior remain pending staging smoke.
+
+## Preserved Phase 3.2.1 activity workflow
 
 This branch preserves institutional account administration and Calendar/Meet scheduling, and configures automatic artifacts:
 
@@ -17,7 +21,7 @@ This branch preserves institutional account administration and Calendar/Meet sch
 - Permanent Space identity, independent configuration status and bounded durable retries; failures retain the join link.
 - One server-validated Moodle teacher configured as COHOST, with independent states and bounded retries.
 - Readonly scope for Calendar-space member queries and safe cohost stage/HTTP diagnostics for activity managers.
-- Version `2026091702` (`0.4.2-alpha`), with fresh-install and Phase 0/1/2/3/3.2 upgrade paths.
+- Unchanged normal schema, with fresh-install and Phase 0/1/2/3/3.2 upgrade paths; Phase 3.3 adds no tables or fields.
 
 The original activity baseline provides:
 

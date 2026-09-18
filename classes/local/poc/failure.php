@@ -14,18 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace mod_tupmeet\local\poc;
+
+use mod_tupmeet\local\google\cohost_exception;
+
 /**
- * Version information for TUP Meet.
+ * Safe experimental failure: no upstream text or chained exception.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+final class failure extends \moodle_exception {
+    /** @var int Normalized HTTP status, zero if unknown. */
+    public readonly int $httpstatus;
 
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091800;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.5.0-alpha-poc';
+    /**
+     * Construct a fixed, localized failure.
+     *
+     * @param mixed $status Native HTTP status only
+     */
+    public function __construct(mixed $status = 0) {
+        $this->httpstatus = cohost_exception::normalize_http_status($status);
+        parent::__construct('pocfailed', 'mod_tupmeet');
+    }
+}

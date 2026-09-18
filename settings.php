@@ -31,3 +31,12 @@ $ADMIN->add('modsettings', new admin_externalpage(
     new moodle_url('/mod/tupmeet/accounts.php'),
     'moodle/site:config'
 ));
+
+if (is_siteadmin()) {
+    $ADMIN->add('modsettings', new admin_externalpage(
+        'tupmeetpoc',
+        get_string('poctitle', 'mod_tupmeet'),
+        new moodle_url('/mod/tupmeet/poc_meet_first.php'),
+        'moodle/site:config'
+    ));
+}

@@ -52,10 +52,12 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'cohosthttpstatus' => 'privacy:metadata:cohosthttpstatus',
         ], 'privacy:metadata:cohost');
         $collection->add_subsystem_link('core_oauth2', [], 'privacy:metadata:oauth2');
+        $collection->add_subsystem_link('core_cache', [], 'privacy:metadata:poccache');
         $collection->add_external_location_link('googlecalendar', [
             'name' => 'privacy:metadata:calendarname',
             'intro' => 'privacy:metadata:calendarintro',
             'schedule' => 'privacy:metadata:calendarschedule',
+            'pocattendee' => 'privacy:metadata:pocattendee',
         ], 'privacy:metadata:googlecalendar');
         $collection->add_external_location_link('googlemeet', [
             'artifactconfig' => 'privacy:metadata:artifactconfig',

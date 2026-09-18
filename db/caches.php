@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Version information for TUP Meet.
+ * Temporary isolated experimental state; never a durable meeting database.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
@@ -24,8 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091800;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.5.0-alpha-poc';
+$definitions = [
+    'meet_first_poc' => [
+        'mode' => \core_cache\store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => false,
+        'requiredataguarantee' => true,
+        'ttl' => 86400,
+    ],
+];
