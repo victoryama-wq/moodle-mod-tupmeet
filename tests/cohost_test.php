@@ -20,6 +20,7 @@ use core\oauth2\client;
 use mod_tupmeet\local\account\account_manager;
 use mod_tupmeet\local\account\oauth_client_factory;
 use mod_tupmeet\local\google\member_service;
+use mod_tupmeet\local\google\cohost_exception;
 use mod_tupmeet\local\meeting\cohost_identity;
 use mod_tupmeet\local\meeting\cohost_manager;
 use mod_tupmeet\local\meeting\meeting_manager;
@@ -57,8 +58,12 @@ final class cohost_test extends \advanced_testcase {
     private array $calls = [];
     /** @var int Native HTTP response status. */
     private int $status = 200;
+    /** @var mixed Optional malformed status from the native transport boundary. */
+    private mixed $statusoverride = null;
     /** @var int Injected remote failure. */
     private int $failure = 0;
+    /** @var string Empty for all requests, otherwise the failing verb only. */
+    private string $failuremethod = '';
     /** @var bool Lost response after remote creation. */
     private bool $timeout = false;
     /** @var bool Conflict after concurrent remote creation. */
@@ -93,7 +98,7 @@ final class cohost_test extends \advanced_testcase {
                 'sub' => 'subject-' . $issuer->get('id'), 'email' => 'owner' . $issuer->get('id') . '@example.invalid',
                 'email_verified' => true, 'hd' => 'example.invalid',
             ]);
-            $client->method('get_info')->willReturnCallback(fn() => ['http_code' => $this->status]);
+            $client->method('get_info')->willReturnCallback(fn() => ['http_code' => $this->statusoverride ?? $this->status]);
             $client->method('get')->willReturnCallback(fn($url, $params, $options) =>
                 $this->http((int) $issuer->get('id'), 'GET', $url, null, $options));
             $client->method('post')->willReturnCallback(fn($url, $body, $options) =>
@@ -182,8 +187,9 @@ final class cohost_test extends \advanced_testcase {
         $this->assertFalse($options['CURLOPT_FOLLOWLOCATION']);
         $this->assertSame(15, $options['CURLOPT_TIMEOUT']);
         $this->calls[] = [$issuer, $method, $url, $body];
-        $this->status = $this->failure ?: 200;
-        if ($this->failure) {
+        $failed = $this->failure && ($this->failuremethod === '' || $method === $this->failuremethod);
+        $this->status = $failed ? $this->failure : 200;
+        if ($failed) {
             return '{"error":{"message":"synthetic private provider detail"}}';
         }
         if ($this->malformed) {
@@ -655,5 +661,203 @@ final class cohost_test extends \advanced_testcase {
         $task->execute();
         $this->assertEquals(0, $DB->get_field('tupmeet', 'cohostattempts', ['id' => $record->id]));
         $this->assertSame('pending', $DB->get_field('tupmeet', 'cohoststatus', ['id' => $record->id]));
+    }
+
+    /**
+     * Readonly is appended only for registered Google issuers, including historical disabled owners.
+     */
+    public function test_readonly_scope_is_isolated(): void {
+        $owner = $this->accounts->get_account($this->owner);
+        $issuer = new \core\oauth2\issuer($owner->issuerid);
+        $expected = [local\google\calendar_service::SCOPE, local\google\meet_service::SCOPE,
+            member_service::SCOPE, member_service::READONLY_SCOPE];
+        $this->assertSame($expected, explode(' ', tupmeet_oauth2_system_scopes($issuer)));
+        $this->accounts->set_enabled($this->owner, false);
+        $this->assertStringContainsString(member_service::READONLY_SCOPE, \core\oauth2\api::get_system_scopes_for_issuer($issuer));
+        $other = testing\issuer::create();
+        $this->assertStringNotContainsString(
+            member_service::READONLY_SCOPE,
+            \core\oauth2\api::get_system_scopes_for_issuer($other)
+        );
+        $issuer->set('servicetype', 'microsoft');
+        $issuer->update();
+        $this->assertSame('', tupmeet_oauth2_system_scopes($issuer));
+    }
+
+    /**
+     * Each member operation persists only safe diagnostics and preserves Calendar/artifact state.
+     *
+     * @param string $method Failing HTTP verb
+     * @param string $stage Expected stage
+     * @param int $status HTTP error
+     * @dataProvider member_failures
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('member_failures')]
+    public function test_member_failure_diagnostics(string $method, string $stage, int $status): void {
+        global $DB;
+        $record = $this->meeting();
+        if ($method === 'PATCH') {
+            $this->members = [$this->member('ROLE_UNSPECIFIED')];
+        }
+        $this->failure = $status;
+        $this->failuremethod = $method;
+        $this->assertFalse($this->manager->synchronize((int) $record->id));
+        $after = $DB->get_record('tupmeet', ['id' => $record->id]);
+        $this->assertSame('error', $after->cohoststatus);
+        $this->assertSame($stage, $after->cohosterrorstage);
+        $this->assertEquals($status, $after->cohosthttpstatus);
+        $allowed = ['cohoststatus', 'cohostattempts', 'cohosterrorstage', 'cohosthttpstatus'];
+        foreach ((array) $record as $field => $value) {
+            if (!in_array($field, $allowed, true)) {
+                $this->assertSame($value, $after->{$field}, $field);
+            }
+        }
+        $this->assertStringNotContainsString('synthetic private', json_encode($after));
+        try {
+            $this->service->synchronize($this->accounts->get_account($this->owner), $record, fn() => true, fn() => true);
+            $this->fail('Expected safe failure');
+        } catch (cohost_exception $e) {
+            $this->assertSame($stage, $e->stage);
+            $this->assertSame($status, $e->httpstatus);
+            $this->assertSame('cohostfailed', $e->errorcode);
+            $this->assertNull($e->getPrevious());
+            $this->assertNull($e->debuginfo);
+            $this->assertStringNotContainsString('synthetic private', $e->getMessage());
+        }
+    }
+
+    /**
+     * Representative provider failures across all member operations.
+     *
+     * @return array Cases
+     */
+    public static function member_failures(): array {
+        return [['GET', 'list', 403], ['GET', 'list', 404], ['POST', 'create', 403],
+            ['POST', 'create', 429], ['PATCH', 'patch', 403], ['PATCH', 'patch', 500]];
+    }
+
+    /**
+     * An explicit retry after authorization repair reuses the locked teacher and clears old diagnostics.
+     */
+    public function test_failed_teacher_retry_keeps_lock_and_meeting(): void {
+        global $DB;
+        $record = $this->meeting();
+        $this->failure = 403;
+        $this->failuremethod = 'POST';
+        for ($i = 0; $i < cohost_manager::MAX_ATTEMPTS; $i++) {
+            $this->manager->synchronize((int) $record->id);
+        }
+        $this->assertSame(5, cohost_manager::MAX_ATTEMPTS);
+        $this->assertEquals(5, $DB->get_field('tupmeet', 'cohostattempts', ['id' => $record->id]));
+        $calls = count($this->calls);
+        $this->assertTrue($this->manager->synchronize((int) $record->id));
+        $this->assertCount($calls, $this->calls);
+        // Simulate successful reauthorization at the native HTTP boundary, without real OAuth.
+        $this->failure = 0;
+        cohost_manager::retry((int) $record->id);
+        $pending = $DB->get_record('tupmeet', ['id' => $record->id]);
+        $this->assertSame('unknown', $pending->cohosterrorstage);
+        $this->assertEquals(0, $pending->cohosthttpstatus);
+        $this->assertEquals(0, $pending->cohostattempts);
+        $this->assertTrue($this->manager->synchronize((int) $record->id));
+        $after = $DB->get_record('tupmeet', ['id' => $record->id]);
+        $this->assertSame('ready', $after->cohoststatus);
+        $this->assertSame('unknown', $after->cohosterrorstage);
+        $this->assertEquals(0, $after->cohosthttpstatus);
+        foreach (
+            ['cohostuserid', 'cohostemail', 'cohostlocked', 'syncstatus', 'syncversion', 'meeturi',
+                'meetspacename', 'accountid', 'meetconfigstatus', 'meetconfigversion', 'autorecord', 'autotranscript'] as $field
+        ) {
+            $this->assertSame($record->{$field}, $after->{$field}, $field);
+        }
+        $this->expectExceptionMessage(get_string('cohostlocked', 'tupmeet'));
+        (new meeting_manager())->update((object) ['id' => $record->id, 'cohostuserid' => 0]);
+    }
+
+    /**
+     * Lost POST responses identify creation without borrowing the preceding GET's HTTP status.
+     */
+    public function test_timeout_has_no_stale_http_status(): void {
+        global $DB;
+        $record = $this->meeting();
+        $this->timeout = true;
+        $this->assertFalse($this->manager->synchronize((int) $record->id));
+        $after = $DB->get_record('tupmeet', ['id' => $record->id]);
+        $this->assertSame('create', $after->cohosterrorstage);
+        $this->assertEquals(0, $after->cohosthttpstatus);
+        $this->assertStringNotContainsString('synthetic private timeout', json_encode($after));
+        $this->timeout = false;
+        $this->assertTrue($this->manager->synchronize((int) $record->id));
+        $this->assertSame('unknown', $DB->get_field('tupmeet', 'cohosterrorstage', ['id' => $record->id]));
+    }
+
+    /**
+     * Identity checks and failed space resolution are distinguishable without upstream details.
+     */
+    public function test_identity_and_space_diagnostics(): void {
+        global $DB;
+        $record = $this->meeting();
+        $DB->set_field('user', 'suspended', 1, ['id' => $this->teacher->id]);
+        $this->assertFalse($this->manager->synchronize((int) $record->id));
+        $this->assertSame('identity', $DB->get_field('tupmeet', 'cohosterrorstage', ['id' => $record->id]));
+        $this->assertSame([], $this->calls);
+        $DB->set_field('user', 'suspended', 0, ['id' => $this->teacher->id]);
+        $DB->set_field('tupmeet', 'meetspacename', null, ['id' => $record->id]);
+        $this->failure = 404;
+        $this->assertFalse($this->manager->synchronize((int) $record->id));
+        $this->assertSame('space', $DB->get_field('tupmeet', 'cohosterrorstage', ['id' => $record->id]));
+        // The unchanged Phase 3 resolver intentionally does not expose an HTTP status.
+        $this->assertEquals(0, $DB->get_field('tupmeet', 'cohosthttpstatus', ['id' => $record->id]));
+    }
+
+    /**
+     * A failed relist after a create conflict is reported as list, not the successful conflict recovery branch.
+     */
+    public function test_conflict_relist_failure_stage(): void {
+        global $DB;
+        $record = $this->meeting();
+        $this->conflict = true;
+        $this->duringhttp = function (string $method): void {
+            if ($method === 'POST') {
+                $this->failure = 429;
+                $this->failuremethod = 'GET';
+            }
+        };
+        $this->assertFalse($this->manager->synchronize((int) $record->id));
+        $this->assertSame(['GET', 'POST', 'GET'], array_column($this->calls, 1));
+        $this->assertSame('list', $DB->get_field('tupmeet', 'cohosterrorstage', ['id' => $record->id]));
+        $this->assertEquals(429, $DB->get_field('tupmeet', 'cohosthttpstatus', ['id' => $record->id]));
+    }
+
+    /**
+     * A malformed HTTP status is rejected at the transport boundary and never partially parsed or stored.
+     */
+    public function test_http_status_sanitized_before_storage(): void {
+        global $DB;
+        $record = $this->meeting();
+        $this->statusoverride = '403 synthetic private token';
+        $this->assertFalse($this->manager->synchronize((int) $record->id));
+        $after = $DB->get_record('tupmeet', ['id' => $record->id]);
+        $this->assertSame('list', $after->cohosterrorstage);
+        $this->assertEquals(0, $after->cohosthttpstatus);
+        $this->assertStringNotContainsString('synthetic private', json_encode($after));
+        $this->assertSame(['GET'], array_column($this->calls, 1));
+    }
+
+    /**
+     * Unexpected service errors expose no exception text, code, URL or inferred stage.
+     */
+    public function test_unknown_failure_has_no_upstream_details(): void {
+        global $DB;
+        $record = $this->meeting();
+        $service = $this->getMockBuilder(member_service::class)->onlyMethods(['synchronize'])->getMock();
+        $service->method('synchronize')->willThrowException(new \RuntimeException('synthetic private body', 403));
+        $this->assertFalse((new cohost_manager($service))->synchronize((int) $record->id));
+        $after = $DB->get_record('tupmeet', ['id' => $record->id]);
+        $this->assertSame('unknown', $after->cohosterrorstage);
+        $this->assertEquals(0, $after->cohosthttpstatus);
+        $this->assertStringNotContainsString('synthetic private', json_encode($after));
+        $this->assertSame('ready', $after->syncstatus);
+        $this->assertSame('ready', $after->meetconfigstatus);
     }
 }

@@ -140,3 +140,14 @@ $string['privacy:metadata:cohostemail'] = 'Correo del docente obtenido del servi
 $string['privacy:metadata:cohostmembername'] = 'Recurso de miembro Google Meet que identifica al coorganizador confirmado.';
 $string['privacy:metadata:cohoststatus'] = 'Último estado de configuración del coorganizador.';
 $string['privacy:metadata:cohostmodified'] = 'Fecha de confirmación de la revisión actual del coorganizador.';
+
+$string['cohosterrorstage'] = 'Etapa del fallo del coorganizador';
+$string['cohosthttpstatus'] = 'Estado HTTP';
+$string['cohoststageidentity'] = 'Verificación de identidad o autorización';
+$string['cohoststagespace'] = 'Resolución del espacio de reunión';
+$string['cohoststagelist'] = 'Consulta de miembros';
+$string['cohoststagecreate'] = 'Creación del miembro';
+$string['cohoststagepatch'] = 'Actualización del rol del miembro';
+$string['cohoststageunknown'] = 'Desconocida';
+$string['privacy:metadata:cohosterrorstage'] = 'Etapa permitida en la que falló la configuración del coorganizador, sin detalles del proveedor.';
+$string['privacy:metadata:cohosthttpstatus'] = 'Estado HTTP normalizado del fallo del coorganizador, o cero cuando no está disponible.';

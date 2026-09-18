@@ -219,6 +219,9 @@ final class cohost_identity_test extends \core_privacy\tests\provider_testcase {
     public function test_privacy_export_and_delete(): void {
         global $DB;
         $activity = $this->activity();
+        $DB->update_record('tupmeet', (object) [
+            'id' => $activity->id, 'cohoststatus' => 'error', 'cohosterrorstage' => 'create', 'cohosthttpstatus' => 403,
+        ]);
         $context = \context_module::instance($activity->cmid);
         $before = $DB->get_record('tupmeet', ['id' => $activity->id]);
         $contextids = provider::get_contexts_for_userid((int) $this->teacher->id)->get_contextids();
@@ -230,12 +233,16 @@ final class cohost_identity_test extends \core_privacy\tests\provider_testcase {
         provider::export_user_data($approved);
         $export = \core_privacy\local\request\writer::with_context($context)->get_data([get_string('cohostuserid', 'tupmeet')]);
         $this->assertSame($this->teacher->email, $export->cohostemail);
+        $this->assertSame('create', $export->cohosterrorstage);
+        $this->assertEquals(403, $export->cohosthttpstatus);
         $this->assertFalse(property_exists($export, 'accountid'));
         provider::delete_data_for_user($approved);
         $after = $DB->get_record('tupmeet', ['id' => $activity->id]);
         $this->assertEquals(0, $after->cohostuserid);
         $this->assertNull($after->cohostemail);
         $this->assertNull($after->cohostmembername);
+        $this->assertSame('unknown', $after->cohosterrorstage);
+        $this->assertEquals(0, $after->cohosthttpstatus);
         $this->assertEquals(1, $after->cohostlocked);
         $this->assertNotSame($before->cohostversion, $after->cohostversion);
         foreach (['accountid', 'syncstatus', 'meetconfigstatus', 'autorecord', 'autotranscript'] as $field) {

@@ -18,6 +18,7 @@ namespace mod_tupmeet\local\meeting;
 
 use mod_tupmeet\local\account\account_manager;
 use mod_tupmeet\local\google\calendar_service;
+use mod_tupmeet\local\google\cohost_exception;
 use mod_tupmeet\local\google\member_service;
 
 /**
@@ -48,9 +49,13 @@ class cohost_manager {
      * @param \stdClass $record Persisted identity
      */
     private static function check_identity(\stdClass $record): void {
-        $user = cohost_identity::resolve((int) $record->course, (int) $record->cohostuserid);
-        if ($user->email !== $record->cohostemail) {
-            throw new \moodle_exception('cohostinvalid', 'mod_tupmeet');
+        try {
+            $user = cohost_identity::resolve((int) $record->course, (int) $record->cohostuserid);
+            if ($user->email !== $record->cohostemail) {
+                throw new cohost_exception('identity');
+            }
+        } catch (\Throwable $e) {
+            throw new cohost_exception('identity');
         }
     }
 
@@ -88,10 +93,11 @@ class cohost_manager {
         self::prepare($record);
         $DB->execute(
             'UPDATE {tupmeet} SET cohostuserid = :userid, cohostemail = :email, cohostlocked = 1,
-                cohostversion = :newversion, cohoststatus = :status, cohostattempts = 0, cohostmodified = 0
+                cohostversion = :newversion, cohoststatus = :status, cohostattempts = 0, cohostmodified = 0,
+                cohosterrorstage = :errorstage, cohosthttpstatus = 0
               WHERE id = :id AND cohostversion = :oldversion',
             ['userid' => $record->cohostuserid, 'email' => $record->cohostemail, 'newversion' => $record->cohostversion,
-                'status' => 'pending', 'id' => $record->id, 'oldversion' => $previous]
+                'status' => 'pending', 'id' => $record->id, 'oldversion' => $previous, 'errorstage' => 'unknown']
         );
         $saved = $DB->get_record('tupmeet', ['id' => $record->id], '*', MUST_EXIST);
         if ($saved->cohostversion !== $record->cohostversion) {
@@ -125,6 +131,8 @@ class cohost_manager {
         $record->cohoststatus = 'pending';
         $record->cohostattempts = 0;
         $record->cohostmodified = 0;
+        $record->cohosterrorstage = 'unknown';
+        $record->cohosthttpstatus = 0;
     }
 
     /**
@@ -213,6 +221,7 @@ class cohost_manager {
             }
             $record->cohostattempts++;
             $this->write($record, ['cohostattempts' => $record->cohostattempts]);
+            $stage = 'space';
             try {
                 if (!calendar_service::valid_meet_uri($record->meeturi ?? '')) {
                     throw new \moodle_exception('cohostfailed', 'mod_tupmeet');
@@ -221,7 +230,9 @@ class cohost_manager {
                     return true;
                 }
                 self::check_identity($record);
+                $stage = 'identity';
                 $account = (new account_manager())->get_account((int) $record->accountid);
+                $stage = 'unknown';
                 $member = $this->meet->synchronize($account, $record, function (string $name) use ($record): bool {
                     global $DB;
                     // Store the canonical identity before member writes, including when a write will fail/timeout.
@@ -234,11 +245,16 @@ class cohost_manager {
                 self::check_identity($record);
                 $this->write($record, [
                     'cohoststatus' => 'ready', 'cohostmodified' => time(), 'cohostmembername' => $member,
+                    'cohosterrorstage' => 'unknown', 'cohosthttpstatus' => 0,
                 ]);
                 return true;
             } catch (\Throwable $e) {
-                // Logs/UI receive only the localized fixed message, never upstream diagnostics.
-                $this->write($record, ['cohoststatus' => 'error']);
+                // Never persist exception text, upstream bodies, URLs, headers or credentials.
+                $this->write($record, [
+                    'cohoststatus' => 'error',
+                    'cohosterrorstage' => $e instanceof cohost_exception ? $e->stage : $stage,
+                    'cohosthttpstatus' => $e instanceof cohost_exception ? $e->httpstatus : 0,
+                ]);
                 return !$this->current($record) || $record->cohostattempts >= self::MAX_ATTEMPTS;
             }
         } finally {

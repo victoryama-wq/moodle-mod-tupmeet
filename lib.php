@@ -167,5 +167,6 @@ function tupmeet_oauth2_system_scopes(\core\oauth2\issuer $issuer): string {
         return '';
     }
     return \mod_tupmeet\local\google\calendar_service::SCOPE . ' ' .
-        \mod_tupmeet\local\google\meet_service::SCOPE . ' ' . \mod_tupmeet\local\google\member_service::SCOPE;
+        \mod_tupmeet\local\google\meet_service::SCOPE . ' ' . \mod_tupmeet\local\google\member_service::SCOPE . ' ' .
+        \mod_tupmeet\local\google\member_service::READONLY_SCOPE;
 }

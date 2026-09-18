@@ -139,3 +139,14 @@ $string['privacy:metadata:cohostemail'] = 'Server-resolved teacher email snapsho
 $string['privacy:metadata:cohostmembername'] = 'Google Meet member resource identifying the confirmed co-host.';
 $string['privacy:metadata:cohoststatus'] = 'Last membership configuration status.';
 $string['privacy:metadata:cohostmodified'] = 'Time of confirmation for the current membership revision.';
+
+$string['cohosterrorstage'] = 'Co-host failure stage';
+$string['cohosthttpstatus'] = 'HTTP status';
+$string['cohoststageidentity'] = 'Identity or authorization verification';
+$string['cohoststagespace'] = 'Meeting space resolution';
+$string['cohoststagelist'] = 'Member listing';
+$string['cohoststagecreate'] = 'Member creation';
+$string['cohoststagepatch'] = 'Member role update';
+$string['cohoststageunknown'] = 'Unknown';
+$string['privacy:metadata:cohosterrorstage'] = 'Allowlisted operation where co-host configuration failed; no provider details.';
+$string['privacy:metadata:cohosthttpstatus'] = 'Normalized HTTP status of the co-host failure, or zero when unavailable.';

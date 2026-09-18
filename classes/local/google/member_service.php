@@ -28,6 +28,8 @@ use mod_tupmeet\local\account\oauth_client_factory;
 class member_service {
     /** @var string Official members write scope, including its Calendar-space limitations. */
     public const SCOPE = 'https://www.googleapis.com/auth/meetings.space.created';
+    /** @var string Read pre-meeting members on Calendar-created spaces. */
+    public const READONLY_SCOPE = 'https://www.googleapis.com/auth/meetings.space.readonly';
     /** @var string Fixed Google origin. */
     private const API = 'https://meet.googleapis.com/v2/';
     /** @var oauth_client_factory Historical owner's native OAuth client factory. */
@@ -68,6 +70,8 @@ class member_service {
         if ($DB->is_transaction_started()) {
             throw new \coding_exception('Meet members HTTP must run after commit.');
         }
+        $status = 0;
+        $stage = ['GET' => 'list', 'POST' => 'create', 'PATCH' => 'patch'][$method] ?? 'unknown';
         try {
             $options = [
                 'CURLOPT_TIMEOUT' => 15, 'CURLOPT_CONNECTTIMEOUT' => 5,
@@ -79,7 +83,7 @@ class member_service {
                 $client->setHeader('Content-Type: application/json');
                 $body = $client->post($url, json_encode($payload, JSON_THROW_ON_ERROR), $options);
             }
-            $status = (int) ($client->get_info()['http_code'] ?? 0);
+            $status = cohost_exception::normalize_http_status($client->get_info()['http_code'] ?? 0);
             if ($method === 'POST' && $status === 409) {
                 return [409, []];
             }
@@ -92,7 +96,7 @@ class member_service {
             }
             return [$status, json_decode($body, true, 512, JSON_THROW_ON_ERROR)];
         } catch (\Throwable $e) {
-            throw new \moodle_exception('cohostfailed', 'mod_tupmeet');
+            throw new cohost_exception($stage, $status);
         }
     }
 
@@ -176,8 +180,10 @@ class member_service {
         if ($DB->is_transaction_started()) {
             throw new \coding_exception('Cohost synchronization must run after commit.');
         }
+        $stage = 'identity';
         try {
             $client = $this->oauth->for_account($account);
+            $stage = 'space';
             $space = $meeting->meetspacename ?? '';
             if ($space === '') {
                 $resolved = (new meet_service($this->oauth))->get_space($client, $meeting);
@@ -187,15 +193,18 @@ class member_service {
                 throw new \RuntimeException();
             }
             $email = $meeting->cohostemail;
+            $stage = 'list';
             $member = $this->find($client, $space, $email, $current);
             if (!$current()) {
                 throw new \RuntimeException();
             }
             if ($member === null) {
+                $stage = 'create';
                 [$status, $member] = $this->request($client, 'POST', self::API . $space . '/members', [
                     'email' => $email, 'role' => 'COHOST',
                 ]);
                 if ($status === 409) {
+                    $stage = 'list';
                     $member = $this->find($client, $space, $email, $current);
                     // A conflict is not permission to mutate a different or unconfirmed role.
                     if (($member['role'] ?? '') !== 'COHOST') {
@@ -203,6 +212,7 @@ class member_service {
                     }
                 }
             } else if (($member['role'] ?? '') !== 'COHOST') {
+                $stage = 'patch';
                 [, $result] = $this->request($client, 'PATCH', self::API . $member['name'] . '?updateMask=role', [
                     'name' => $member['name'], 'role' => 'COHOST',
                 ]);
@@ -216,8 +226,10 @@ class member_service {
                 throw new \RuntimeException();
             }
             return $member['name'];
+        } catch (cohost_exception $e) {
+            throw $e;
         } catch (\Throwable $e) {
-            throw new \moodle_exception('cohostfailed', 'mod_tupmeet');
+            throw new cohost_exception($stage);
         }
     }
 }

@@ -62,6 +62,8 @@ final class upgrade_test extends \advanced_testcase {
                     $this->assertSame('unconfigured', $record->cohoststatus);
                     $this->assertEquals(0, $record->cohostuserid);
                     $this->assertNull($record->cohostemail);
+                    $this->assertSame('unknown', $record->cohosterrorstage);
+                    $this->assertEquals(0, $record->cohosthttpstatus);
                 }
             } finally {
                 $dbman->drop_table($table);
@@ -175,7 +177,7 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertEquals(0, $after->meetconfigmodified);
         $this->assertEquals(1, $DB->get_field('tupmeet_accounts', 'isdefault', ['id' => $accountid]));
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
-        $this->assertEquals(2026091701, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026091702, get_config('mod_tupmeet', 'version'));
     }
     /**
      * A Phase 3 upgrade preserves all known metadata and never selects or synchronizes a teacher.
@@ -213,6 +215,37 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertEquals(0, $after->cohostattempts);
         $this->assertEquals(0, $after->cohostmodified);
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
-        $this->assertEquals(2026091701, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026091702, get_config('mod_tupmeet', 'version'));
+    }
+    /**
+     * Diagnostic upgrade preserves the failed locked teacher and every existing meeting field.
+     */
+    public function test_phase32_upgrade_only_adds_diagnostics(): void {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/upgradelib.php');
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $table = new \xmldb_table('tupmeet');
+        foreach (['cohosthttpstatus', 'cohosterrorstage'] as $field) {
+            $DB->get_manager()->drop_field($table, new \xmldb_field($field));
+        }
+        $id = $DB->insert_record('tupmeet', (object) [
+            'name' => 'Phase 3.2', 'accountid' => 321, 'meetspacename' => 'spaces/Stable_1',
+            'calendareventid' => 'stableevent', 'meeturi' => 'https://meet.google.com/abc-defg-hij',
+            'syncstatus' => 'ready', 'meetconfigstatus' => 'ready', 'autorecord' => 1, 'autotranscript' => 1,
+            'cohostuserid' => 123, 'cohostemail' => 'teacher@example.invalid', 'cohostlocked' => 1,
+            'cohoststatus' => 'error', 'cohostattempts' => 5, 'cohostversion' => 'savedrevision',
+        ]);
+        $before = $DB->get_record('tupmeet', ['id' => $id]);
+        set_config('version', 2026091701, 'mod_tupmeet');
+        $this->assertTrue(xmldb_tupmeet_upgrade(2026091701));
+        $after = $DB->get_record('tupmeet', ['id' => $id]);
+        foreach ((array) $before as $field => $value) {
+            $this->assertSame($value, $after->{$field}, $field);
+        }
+        $this->assertSame('unknown', $after->cohosterrorstage);
+        $this->assertEquals(0, $after->cohosthttpstatus);
+        $this->assertEquals(2026091702, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
     }
 }

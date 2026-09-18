@@ -1,5 +1,8 @@
 # Fase 3.2 — docente coorganizador automático
 
+> Documento histórico de la implementación 0.4.1-alpha. El hardening [Fase 3.2.1](PHASE3_2_1.md)
+> añade el cuarto scope readonly y diagnóstico seguro; contiene el procedimiento vigente de reconexión y smoke.
+
 ## Base y alcance
 
 - Base aprobada: `codex/fase-3-meet-auto-artifacts`, `096d6bb22679fdb63c63681388f711fd9ba17f2f`.

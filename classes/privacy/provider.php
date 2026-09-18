@@ -48,6 +48,8 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'cohostmembername' => 'privacy:metadata:cohostmembername',
             'cohoststatus' => 'privacy:metadata:cohoststatus',
             'cohostmodified' => 'privacy:metadata:cohostmodified',
+            'cohosterrorstage' => 'privacy:metadata:cohosterrorstage',
+            'cohosthttpstatus' => 'privacy:metadata:cohosthttpstatus',
         ], 'privacy:metadata:cohost');
         $collection->add_subsystem_link('core_oauth2', [], 'privacy:metadata:oauth2');
         $collection->add_external_location_link('googlecalendar', [
@@ -118,6 +120,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             if ($record && (int) $record->cohostuserid === (int) $contextlist->get_user()->id) {
                 $data = (object) array_intersect_key((array) $record, array_flip([
                     'cohostuserid', 'cohostemail', 'cohostmembername', 'cohoststatus', 'cohostmodified',
+                    'cohosterrorstage', 'cohosthttpstatus',
                 ]));
                 \core_privacy\local\request\writer::with_context($context)->export_data(
                     [get_string('cohostuserid', 'tupmeet')],
@@ -137,9 +140,10 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         // Keep the nonpersonal lock tombstone: erasure must not enable granting a second cohost.
         $DB->execute(
             'UPDATE {tupmeet} SET cohostuserid = 0, cohostemail = NULL, cohostmembername = NULL,
-                cohoststatus = :status, cohostversion = :version, cohostattempts = 0, cohostmodified = 0
+                cohoststatus = :status, cohostversion = :version, cohostattempts = 0, cohostmodified = 0,
+                cohosterrorstage = :errorstage, cohosthttpstatus = 0
               WHERE id = :id AND cohostuserid = :userid',
-            ['status' => 'unconfigured', 'version' => bin2hex(random_bytes(16)),
+            ['status' => 'unconfigured', 'version' => bin2hex(random_bytes(16)), 'errorstage' => 'unknown',
                 'id' => $record->id, 'userid' => $record->cohostuserid]
         );
     }

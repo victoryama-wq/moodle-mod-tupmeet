@@ -106,5 +106,19 @@ function xmldb_tupmeet_upgrade($oldversion): bool {
         // Historical activities remain unconfigured. No identity inference, tasks or Google HTTP.
         upgrade_mod_savepoint(true, 2026091701, 'tupmeet');
     }
+    if ($oldversion < 2026091702) {
+        $table = new xmldb_table('tupmeet');
+        $fields = [
+            new xmldb_field('cohosterrorstage', XMLDB_TYPE_CHAR, '12', null, XMLDB_NOTNULL, null, 'unknown', 'cohostlocked'),
+            new xmldb_field('cohosthttpstatus', XMLDB_TYPE_INTEGER, '3', null, XMLDB_NOTNULL, null, '0', 'cohosterrorstage'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        // Existing errors have no known stage. Preserve identities, statuses and retry budgets; no HTTP or tasks.
+        upgrade_mod_savepoint(true, 2026091702, 'tupmeet');
+    }
     return true;
 }

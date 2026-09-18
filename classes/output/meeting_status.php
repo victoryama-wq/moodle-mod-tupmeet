@@ -17,6 +17,7 @@
 namespace mod_tupmeet\output;
 
 use mod_tupmeet\local\google\calendar_service;
+use mod_tupmeet\local\google\cohost_exception;
 
 /**
  * Separate joining availability from teacher-only artifact configuration details.
@@ -71,6 +72,14 @@ class meeting_status {
         $teacher = empty($meeting->cohostuserid) ? null : $DB->get_record('user', ['id' => $meeting->cohostuserid]);
         $table->data[] = [get_string('cohostuserid', 'tupmeet'), $teacher ? s(fullname($teacher)) : '—'];
         $table->data[] = [get_string('cohoststatus', 'tupmeet'), get_string('cohost' . $cohoststatus, 'tupmeet')];
+        if ($cohoststatus === 'error') {
+            $stage = cohost_exception::normalize_stage($meeting->cohosterrorstage ?? 'unknown');
+            $table->data[] = [get_string('cohosterrorstage', 'tupmeet'), get_string('cohoststage' . $stage, 'tupmeet')];
+            $httpstatus = cohost_exception::normalize_http_status($meeting->cohosthttpstatus ?? 0);
+            if ($httpstatus) {
+                $table->data[] = [get_string('cohosthttpstatus', 'tupmeet'), $httpstatus];
+            }
+        }
         $html .= \html_writer::table($table);
         if ($ready && in_array($status, ['error', 'unconfigured'], true)) {
             $html .= $OUTPUT->notification(get_string('meetconfig' . $status . 'notice', 'tupmeet'), 'warning');

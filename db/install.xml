@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/tupmeet/db" VERSION="2026091701" COMMENT="XMLDB file for mod_tupmeet"
+<XMLDB PATH="mod/tupmeet/db" VERSION="2026091702" COMMENT="XMLDB file for mod_tupmeet"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
   <TABLES>
@@ -41,6 +41,8 @@
         <FIELD NAME="cohostattempts" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="cohostmodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="cohostlocked" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="cohosterrorstage" TYPE="char" LENGTH="12" NOTNULL="true" DEFAULT="unknown"/>
+        <FIELD NAME="cohosthttpstatus" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
