@@ -4,7 +4,7 @@ TUP Meet is an institutional Moodle activity module intended to create and manag
 
 ## Phase 3.4 — Meet-first for new activities
 
-Version `2026091801` (`0.6.0-alpha`) promotes the successful staging PoC to the normal activity workflow. See [Phase 3.4](docs/PHASE3_4.md) for the owner-reported real evidence, upgrade, independent states, conservative Space creation and pending integrated smoke.
+Version `2026091802` (`0.6.1-alpha`) retains the Meet-first workflow and expresses recurrence `UNTIL` at the start time on the final local date. See [Phase 3.4.1](docs/PHASE3_4_1.md) for this limited hardening and the approved Meet-first smoke, and [Phase 3.4](docs/PHASE3_4.md) for the workflow, upgrade and independent states.
 
 - Every new activity creates one Meet REST Space, persists its canonical name/URI/code, and independently reconciles the teacher COHOST, automatic artifacts and a native Calendar event using that same Meet.
 - Calendar invitations include the server-validated teacher and use `sendUpdates=all`. A subsequent GET must confirm the event, conference and attendee before Calendar becomes ready.

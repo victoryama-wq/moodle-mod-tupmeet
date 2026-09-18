@@ -69,7 +69,7 @@ final class schedule_test extends \advanced_testcase {
         $meeting->recurrenceinterval = 2;
         $payload = schedule::payload($meeting);
         $this->assertSame(
-            ['RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;WKST=MO;UNTIL=20261213T045959Z'],
+            ['RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;WKST=MO;UNTIL=20261213T040000Z'],
             $payload['recurrence']
         );
     }
@@ -128,7 +128,7 @@ final class schedule_test extends \advanced_testcase {
     }
 
     /**
-     * The reported Saturday smoke ends on October 17 locally, despite UNTIL's October 18 UTC date.
+     * The reported Saturday smoke ends inclusively at its October 17 local start.
      */
     public function test_saturday_smoke_inclusive_end(): void {
         $meeting = $this->meeting();
@@ -138,7 +138,7 @@ final class schedule_test extends \advanced_testcase {
         $meeting->recurrencedays = '["sat"]';
         $meeting->recurrenceuntil = (new \DateTimeImmutable('2026-10-17T00:00:00-05:00'))->getTimestamp();
         $this->assertSame(
-            ['RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SA;WKST=MO;UNTIL=20261018T045959Z'],
+            ['RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SA;WKST=MO;UNTIL=20261017T140000Z'],
             schedule::payload($meeting)['recurrence']
         );
         $laststart = (new \DateTimeImmutable('2026-10-17T09:00:00-05:00'))->getTimestamp();
@@ -194,15 +194,127 @@ final class schedule_test extends \advanced_testcase {
         return [
             'Cancun Saturday late evening' => [
                 'America/Cancun', '2026-10-16T23:30:00-05:00', '2026-10-17T00:00:00-05:00',
-                '2026-10-17T23:30:00-05:00', '20261018T045959Z',
+                '2026-10-17T23:30:00-05:00', '20261018T043000Z',
             ],
             'New York autumn DST transition' => [
                 'America/New_York', '2026-10-31T23:30:00-04:00', '2026-11-01T00:00:00-04:00',
-                '2026-11-01T23:30:00-05:00', '20261102T045959Z',
+                '2026-11-01T23:30:00-05:00', '20261102T043000Z',
             ],
             'New York spring DST transition' => [
                 'America/New_York', '2026-03-07T23:30:00-05:00', '2026-03-08T00:00:00-05:00',
-                '2026-03-08T23:30:00-04:00', '20260309T035959Z',
+                '2026-03-08T23:30:00-04:00', '20260309T033000Z',
+            ],
+        ];
+    }
+
+    /**
+     * The emitted cutoff and local next-session lookup preserve the same finite series.
+     *
+     * @dataProvider recurrence_cutoff_provider
+     * @param string $zone Saved timezone
+     * @param array $starts Exact expected occurrence starts with explicit offsets
+     * @param string $finaldate Selected final local date, with a deliberately unrelated time
+     * @param array $days Selected weekdays
+     * @param string $rule Expected complete Calendar rule
+     * @param string $excluded First selected start beyond the permitted date
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('recurrence_cutoff_provider')]
+    public function test_recurrence_cutoff_preserves_occurrences(
+        string $zone,
+        array $starts,
+        string $finaldate,
+        array $days,
+        string $rule,
+        string $excluded
+    ): void {
+        $meeting = $this->meeting();
+        $meeting->timezone = $zone;
+        $meeting->startdatetime = (new \DateTimeImmutable($starts[0]))->getTimestamp();
+        $meeting->enddatetime = $meeting->startdatetime + HOURSECS;
+        $meeting->isrecurring = 1;
+        $meeting->recurrencedays = json_encode($days);
+        $meeting->recurrenceuntil = (new \DateTimeImmutable($finaldate))->getTimestamp();
+        $previous = date_default_timezone_get();
+        date_default_timezone_set('Pacific/Auckland');
+        try {
+            $payload = schedule::payload($meeting);
+            $this->assertSame([$rule], $payload['recurrence']);
+            $this->assertSame($zone, $payload['start']['timeZone']);
+            $this->assertSame($zone, $payload['end']['timeZone']);
+            $this->assertSame($starts[0], $payload['start']['dateTime']);
+            $untilvalue = explode(';UNTIL=', $rule)[1];
+            $this->assertSame($untilvalue, schedule::recurrence_until($meeting));
+            $until = \DateTimeImmutable::createFromFormat('!Ymd\THis\Z', $untilvalue, new \DateTimeZone('UTC'));
+            $localuntil = $until->setTimezone(new \DateTimeZone($zone));
+            $this->assertSame(substr($finaldate, 0, 10), $localuntil->format('Y-m-d'));
+            $this->assertSame(substr($starts[0], 11, 8), $localuntil->format('H:i:s'));
+            $cursor = $meeting->startdatetime;
+            foreach ($starts as $expected) {
+                $timestamp = (new \DateTimeImmutable($expected))->getTimestamp();
+                $this->assertSame($timestamp, schedule::next_session($meeting, $cursor));
+                $this->assertLessThanOrEqual($until->getTimestamp(), $timestamp);
+                $cursor = $timestamp + HOURSECS;
+            }
+            $this->assertNull(schedule::next_session($meeting, $cursor));
+            $excludedstart = (new \DateTimeImmutable($excluded))->getTimestamp();
+            $this->assertGreaterThan($until->getTimestamp(), $excludedstart);
+            $this->assertNull(schedule::next_session($meeting, $excludedstart));
+        } finally {
+            date_default_timezone_set($previous);
+        }
+    }
+
+    /**
+     * Explicit occurrences cover selected/unselected final weekdays, DST and midnight UTC.
+     *
+     * @return array Test cases
+     */
+    public static function recurrence_cutoff_provider(): array {
+        return [
+            'Cancun final Saturday included' => [
+                'America/Cancun',
+                ['2026-09-19T17:00:00-05:00', '2026-09-26T17:00:00-05:00', '2026-10-03T17:00:00-05:00'],
+                '2026-10-03T08:45:00-05:00', ['sat'],
+                'RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SA;WKST=MO;UNTIL=20261003T220000Z',
+                '2026-10-10T17:00:00-05:00',
+            ],
+            'Cancun final weekday not selected' => [
+                'America/Cancun',
+                ['2026-09-19T17:00:00-05:00', '2026-09-26T17:00:00-05:00'],
+                '2026-10-02T08:45:00-05:00', ['sat'],
+                'RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SA;WKST=MO;UNTIL=20261002T220000Z',
+                '2026-10-03T17:00:00-05:00',
+            ],
+            'Cancun multiple days exclude October 4' => [
+                'America/Cancun',
+                ['2026-09-26T17:00:00-05:00', '2026-09-27T17:00:00-05:00', '2026-10-03T17:00:00-05:00'],
+                '2026-10-03T08:45:00-05:00', ['sat', 'sun'],
+                'RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SA,SU;WKST=MO;UNTIL=20261003T220000Z',
+                '2026-10-04T17:00:00-05:00',
+            ],
+            'Cancun late start preserves seconds and crosses UTC date' => [
+                'America/Cancun', ['2026-09-26T23:30:15-05:00', '2026-10-03T23:30:15-05:00'],
+                '2026-10-03T08:45:00-05:00', ['sat'],
+                'RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SA;WKST=MO;UNTIL=20261004T043015Z',
+                '2026-10-10T23:30:15-05:00',
+            ],
+            'New York before autumn DST change' => [
+                'America/New_York', ['2026-10-18T10:00:00-04:00', '2026-10-25T10:00:00-04:00'],
+                '2026-10-25T00:00:00-04:00', ['sun'],
+                'RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SU;WKST=MO;UNTIL=20261025T140000Z',
+                '2026-11-01T10:00:00-05:00',
+            ],
+            'New York final date changes to standard time' => [
+                'America/New_York', ['2026-10-25T10:00:00-04:00', '2026-11-01T10:00:00-05:00'],
+                '2026-11-01T00:00:00-04:00', ['sun'],
+                'RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SU;WKST=MO;UNTIL=20261101T150000Z',
+                '2026-11-08T10:00:00-05:00',
+            ],
+            'New York final date changes to daylight time' => [
+                'America/New_York', ['2026-03-01T10:00:00-05:00', '2026-03-08T10:00:00-04:00'],
+                '2026-03-08T00:00:00-05:00', ['sun'],
+                'RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=SU;WKST=MO;UNTIL=20260308T140000Z',
+                '2026-03-15T10:00:00-04:00',
             ],
         ];
     }

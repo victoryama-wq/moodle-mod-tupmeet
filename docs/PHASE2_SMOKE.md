@@ -35,6 +35,8 @@ Cuando se autorice instalar esta actualización: completar **Administración del
 
 ## Análisis de la última fecha de recurrencia
 
+Nota histórica: el análisis y la decisión siguientes corresponden a Fase 2.1. Desde [Fase 3.4.1](PHASE3_4_1.md), `UNTIL` usa la hora local de inicio en la fecha final, conservando el límite inclusivo. Las cifras y resultados originales de este smoke se mantienen como evidencia histórica.
+
 ### Conversión exacta en `schedule::payload()`
 
 1. Interpretar `recurrenceuntil` en la zona IANA **guardada en la reunión**.

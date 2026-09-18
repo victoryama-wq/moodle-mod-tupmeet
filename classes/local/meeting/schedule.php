@@ -104,14 +104,29 @@ class schedule {
         ];
         if ($meeting->isrecurring) {
             $days = array_intersect_key(self::DAYS, array_flip(json_decode($meeting->recurrencedays, true)));
-            $until = self::date($meeting->recurrenceuntil, $zone)->setTime(23, 59, 59)
-                ->setTimezone(new \DateTimeZone('UTC'))->format('Ymd\THis\Z');
+            $until = self::recurrence_until($meeting);
             $payload['recurrence'] = [
                 'RRULE:FREQ=WEEKLY;INTERVAL=' . (int) $meeting->recurrenceinterval .
                     ';BYDAY=' . implode(',', $days) . ';WKST=MO;UNTIL=' . $until,
             ];
         }
         return $payload;
+    }
+
+    /**
+     * Express the inclusive final local date at DTSTART's wall time as RFC5545 UTC.
+     *
+     * Resolve the offset on the final date, not the offset of the first session.
+     * A late local start can still fall on the following UTC date.
+     *
+     * @param \stdClass $meeting Validated recurring schedule
+     * @return string Inclusive UTC limit
+     */
+    public static function recurrence_until(\stdClass $meeting): string {
+        $start = self::date($meeting->startdatetime, $meeting->timezone);
+        return self::date($meeting->recurrenceuntil, $meeting->timezone)
+            ->setTime((int) $start->format('H'), (int) $start->format('i'), (int) $start->format('s'))
+            ->setTimezone(new \DateTimeZone('UTC'))->format('Ymd\THis\Z');
     }
 
     /**
