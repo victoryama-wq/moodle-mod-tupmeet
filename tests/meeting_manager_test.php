@@ -162,11 +162,23 @@ final class meeting_manager_test extends \advanced_testcase {
     }
 
     /**
+     * Explicit fixture for the retained Calendar-first flow, never a public creation option.
+     *
+     * @param \stdClass $data Submission
+     * @return int Activity ID
+     */
+    private function historical_create(\stdClass $data): int {
+        global $DB;
+        $id = $this->meetings->create($data);
+        $DB->set_field('tupmeet', 'provisionmode', 'calendar', ['id' => $id]);
+        return $id;
+    }
+    /**
      * A committed activity gets a Calendar event and validated Meet link automatically on sync.
      */
     public function test_create_and_stable_identifiers(): void {
         global $DB;
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $this->assertSame([], $this->calls);
         $this->assertEquals(1, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
         $before = $DB->get_record('tupmeet', ['id' => $id]);
@@ -190,10 +202,10 @@ final class meeting_manager_test extends \advanced_testcase {
     public function test_duplicate_submission(): void {
         global $DB;
         $data = $this->data();
-        $id = $this->meetings->create($data);
+        $id = $this->historical_create($data);
         $this->meetings->synchronize($id);
         try {
-            $this->meetings->create($data);
+            $this->historical_create($data);
             $this->fail('Duplicate accepted');
         } catch (\moodle_exception $e) {
             $this->assertSame('duplicatesubmission', $e->errorcode);
@@ -207,7 +219,7 @@ final class meeting_manager_test extends \advanced_testcase {
      */
     public function test_edit_uses_historical_account_and_event(): void {
         global $DB;
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $this->meetings->synchronize($id);
         $before = $DB->get_record('tupmeet', ['id' => $id]);
         $second = $this->account();
@@ -227,7 +239,7 @@ final class meeting_manager_test extends \advanced_testcase {
         $this->assertSame('PATCH', $call[1]);
         $this->assertSame('Edited title', $call[3]['summary']);
         $this->assertArrayNotHasKey('conferenceData', $call[3]);
-        $next = $this->meetings->create($this->data());
+        $next = $this->historical_create($this->data());
         $this->assertEquals($second, $DB->get_field('tupmeet', 'accountid', ['id' => $next]));
         $this->assertSame(1, $this->creates);
     }
@@ -237,7 +249,7 @@ final class meeting_manager_test extends \advanced_testcase {
      */
     public function test_calendar_error_and_retry(): void {
         global $DB;
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $this->fault = 'error';
         $this->assertFalse($this->meetings->synchronize($id));
         $this->assertSame('error', $DB->get_field('tupmeet', 'syncstatus', ['id' => $id]));
@@ -251,7 +263,7 @@ final class meeting_manager_test extends \advanced_testcase {
      * Timeout after Google inserted an event is recovered by GET of the same precommitted ID.
      */
     public function test_timeout_after_remote_creation(): void {
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $this->fault = 'timeout';
         $this->assertFalse($this->meetings->synchronize($id));
         $this->assertSame(1, $this->creates);
@@ -266,7 +278,7 @@ final class meeting_manager_test extends \advanced_testcase {
     public function test_missing_and_pending_conference(): void {
         global $DB;
         foreach (['noconference', 'pending'] as $fault) {
-            $id = $this->meetings->create($this->data());
+            $id = $this->historical_create($this->data());
             $this->fault = $fault;
             $this->assertFalse($this->meetings->synchronize($id));
             $this->assertSame('pending', $DB->get_field('tupmeet', 'syncstatus', ['id' => $id]));
@@ -283,7 +295,7 @@ final class meeting_manager_test extends \advanced_testcase {
     public function test_local_rollback_before_google(): void {
         global $DB;
         $transaction = $DB->start_delegated_transaction();
-        $this->meetings->create($this->data());
+        $this->historical_create($this->data());
         try {
             $transaction->rollback(new \moodle_exception('invalidrequest', 'mod_tupmeet'));
         } catch (\moodle_exception $e) {
@@ -299,7 +311,7 @@ final class meeting_manager_test extends \advanced_testcase {
      */
     public function test_sync_rejects_open_transaction(): void {
         global $DB;
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $transaction = $DB->start_delegated_transaction();
         try {
             $this->meetings->synchronize($id);
@@ -316,7 +328,7 @@ final class meeting_manager_test extends \advanced_testcase {
      */
     public function test_edit_during_sync_is_not_lost(): void {
         global $DB;
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $this->duringhttp = function () use ($id) {
             $this->meetings->update((object) ['id' => $id, 'name' => 'Newer revision']);
         };
@@ -331,7 +343,7 @@ final class meeting_manager_test extends \advanced_testcase {
      * Deleting an activity cancels local work without deleting anything in Google.
      */
     public function test_delete_is_local_only(): void {
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $this->meetings->synchronize($id);
         $calls = count($this->calls);
         $this->assertTrue(tupmeet_delete_instance($id));
@@ -383,7 +395,7 @@ final class meeting_manager_test extends \advanced_testcase {
      * Google conflict is recovered by verifying the same event's correlation marker.
      */
     public function test_insert_conflict_recovery(): void {
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $this->fault = 'conflict';
         $this->assertTrue($this->meetings->synchronize($id));
         $this->assertSame(1, $this->creates);
@@ -394,7 +406,7 @@ final class meeting_manager_test extends \advanced_testcase {
      */
     public function test_local_result_write_failure_after_google(): void {
         global $DB;
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $table = new \xmldb_table('tupmeet');
         $field = new \xmldb_field('lastsync', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'meeturi');
         $this->duringhttp = function () use ($DB, $table, $field) {
@@ -419,7 +431,7 @@ final class meeting_manager_test extends \advanced_testcase {
      */
     public function test_foreign_event_is_rejected(): void {
         global $DB;
-        $id = $this->meetings->create($this->data());
+        $id = $this->historical_create($this->data());
         $record = $DB->get_record('tupmeet', ['id' => $id]);
         $issuer = (int) $this->accounts->get_account($this->owner)->issuerid;
         $this->remote[$issuer][$record->calendareventid] = ['id' => $record->calendareventid];
@@ -440,7 +452,7 @@ final class meeting_manager_test extends \advanced_testcase {
         $data->recurrencedays = json_encode([$day]);
         $data->recurrenceinterval = 1;
         $data->recurrenceuntil = $data->startdatetime + 28 * DAYSECS;
-        $id = $this->meetings->create($data);
+        $id = $this->historical_create($data);
         $this->assertTrue($this->meetings->synchronize($id));
         tupmeet_update_instance((object) ['instance' => $id, 'name' => 'Name-only edit']);
         $this->assertSame($data->recurrencedays, $DB->get_field('tupmeet', 'recurrencedays', ['id' => $id]));
@@ -465,7 +477,8 @@ final class meeting_manager_test extends \advanced_testcase {
         $transaction->allow_commit();
         // The real observer now runs. This fixture has no native system connection, so no HTTP
         // is possible: it must leave an explicit error and the already committed retry task.
-        $this->assertSame('error', $DB->get_field('tupmeet', 'syncstatus', ['id' => $activity->id]));
+        $this->assertSame('error', $DB->get_field('tupmeet', 'spacestatus', ['id' => $activity->id]));
+        $this->assertSame('pending', $DB->get_field('tupmeet', 'syncstatus', ['id' => $activity->id]));
         $this->assertEquals(1, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
     }
 }

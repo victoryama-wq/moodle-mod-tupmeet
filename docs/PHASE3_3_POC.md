@@ -4,6 +4,8 @@
 Base: `60bf2482a56318ff15e20c5bcf1146f6aebe2020` (Fase 3.2.1).
 Rama: `codex/fase-3-3-meet-first-poc`.
 
+> **Actualización Fase 3.4:** el responsable reportó smoke real satisfactorio de Space, COHOST, artefactos y Calendar native; ver [evidencia y flujo actual](PHASE3_4.md). El contenido siguiente conserva el diseño y estado original de la PoC. Sigue aislada para comparación en staging y deberá retirarse o deshabilitarse antes del release de producción.
+
 ## Motivo y evidencia
 
 El responsable reportó `create / 403` al intentar añadir el COHOST al Space creado por Calendar. Es evidencia del smoke anterior, no un resultado reproducido por PHPUnit ni una demostración de que todos esos Spaces sean incompatibles. Se prueba ahora un Space creado directamente por Meet con la aplicación autorizada.

@@ -64,6 +64,12 @@ final class upgrade_test extends \advanced_testcase {
                     $this->assertNull($record->cohostemail);
                     $this->assertSame('unknown', $record->cohosterrorstage);
                     $this->assertEquals(0, $record->cohosthttpstatus);
+                    $this->assertSame('calendar', $record->provisionmode);
+                    $this->assertSame('pending', $record->spacestatus);
+                    $this->assertSame('legacy', $record->spaceversion);
+                    foreach (['spaceattempts', 'spacemodified', 'spacenextattempt', 'spacehttpstatus'] as $field) {
+                        $this->assertEquals(0, $record->{$field});
+                    }
                 }
             } finally {
                 $dbman->drop_table($table);
@@ -177,7 +183,7 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertEquals(0, $after->meetconfigmodified);
         $this->assertEquals(1, $DB->get_field('tupmeet_accounts', 'isdefault', ['id' => $accountid]));
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
-        $this->assertEquals(2026091702, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026091801, get_config('mod_tupmeet', 'version'));
     }
     /**
      * A Phase 3 upgrade preserves all known metadata and never selects or synchronizes a teacher.
@@ -215,7 +221,7 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertEquals(0, $after->cohostattempts);
         $this->assertEquals(0, $after->cohostmodified);
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
-        $this->assertEquals(2026091702, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026091801, get_config('mod_tupmeet', 'version'));
     }
     /**
      * Diagnostic upgrade preserves the failed locked teacher and every existing meeting field.
@@ -245,7 +251,45 @@ final class upgrade_test extends \advanced_testcase {
         }
         $this->assertSame('unknown', $after->cohosterrorstage);
         $this->assertEquals(0, $after->cohosthttpstatus);
-        $this->assertEquals(2026091702, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026091801, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
+    }
+
+    /**
+     * Upgrade classifies all existing states without inferring Space origin or queuing HTTP.
+     */
+    public function test_phase33_upgrade_classifies_without_migration(): void {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/upgradelib.php');
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        $fields = ['provisionmode', 'spacestatus', 'spaceversion', 'spaceattempts', 'spacemodified',
+            'spacenextattempt', 'spacehttpstatus'];
+        $table = new \xmldb_table('tupmeet');
+        foreach (array_reverse($fields) as $field) {
+            $DB->get_manager()->drop_field($table, new \xmldb_field($field));
+        }
+        $before = [];
+        foreach (['legacy', 'ready', 'pending', 'error'] as $status) {
+            $id = $DB->insert_record('tupmeet', (object) ['name' => 'Historical ' . $status,
+                'syncstatus' => $status, 'accountid' => 321, 'meetspacename' => 'spaces/Historical_1',
+                'meeturi' => 'https://meet.google.com/abc-defg-hij', 'meetingcode' => 'abc-defg-hij',
+                'cohostmembername' => 'spaces/Historical_1/members/Manual_1']);
+            $before[$id] = $DB->get_record('tupmeet', ['id' => $id]);
+        }
+        set_config('version', 2026091800, 'mod_tupmeet');
+        $this->assertTrue(xmldb_tupmeet_upgrade(2026091800));
+        foreach ($before as $id => $old) {
+            $after = $DB->get_record('tupmeet', ['id' => $id]);
+            foreach ((array) $old as $field => $value) {
+                $this->assertSame($value, $after->{$field}, $field);
+            }
+            $this->assertSame($old->syncstatus === 'legacy' ? 'legacy' : 'calendar', $after->provisionmode);
+            $this->assertSame('pending', $after->spacestatus);
+            $this->assertSame('legacy', $after->spaceversion);
+            $this->assertEquals(0, $after->spaceattempts);
+        }
+        $this->assertEquals(2026091801, get_config('mod_tupmeet', 'version'));
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
     }
 }

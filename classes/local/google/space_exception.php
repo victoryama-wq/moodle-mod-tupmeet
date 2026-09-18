@@ -14,23 +14,35 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
-namespace mod_tupmeet\task;
+namespace mod_tupmeet\local\google;
 
 /**
- * Durable Calendar retry, using Moodle's native task retry/backoff mechanism.
+ * Sanitized Space creation outcome, never an upstream message or exception chain.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class sync_meeting extends \core\task\adhoc_task {
+final class space_exception extends \moodle_exception {
+    /** @var int Exact normalized response code, zero without a response. */
+    public readonly int $httpstatus;
+
     /**
-     * Synchronize the latest desired state, or retry with a sanitized task error.
+     * Record only trusted transport metadata.
+     *
+     * @param mixed $status Actual response status
      */
-    public function execute(): void {
-        $data = $this->get_custom_data();
-        if (!(new \mod_tupmeet\local\meeting\meeting_manager())->synchronize((int) $data->id, $data->version ?? null)) {
-            throw new \moodle_exception('syncpending', 'mod_tupmeet');
-        }
+    public function __construct(mixed $status = 0) {
+        $this->httpstatus = cohost_exception::normalize_http_status($status);
+        parent::__construct('spacefailed', 'mod_tupmeet');
+    }
+
+    /**
+     * Only explicit request/auth rejection is definitive; 408, 409 and server errors are ambiguous.
+     *
+     * @return bool No creation was accepted
+     */
+    public function rejected(): bool {
+        return in_array($this->httpstatus, [400, 401, 403, 404, 405, 422, 429], true);
     }
 }

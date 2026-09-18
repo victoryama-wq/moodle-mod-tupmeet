@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/tupmeet/db" VERSION="2026091702" COMMENT="XMLDB file for mod_tupmeet"
+<XMLDB PATH="mod/tupmeet/db" VERSION="2026091801" COMMENT="XMLDB file for mod_tupmeet"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
   <TABLES>
@@ -43,6 +43,13 @@
         <FIELD NAME="cohostlocked" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="cohosterrorstage" TYPE="char" LENGTH="12" NOTNULL="true" DEFAULT="unknown"/>
         <FIELD NAME="cohosthttpstatus" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="provisionmode" TYPE="char" LENGTH="8" NOTNULL="true" DEFAULT="calendar" COMMENT="Immutable creation model: legacy, calendar or meet; application creates new activities as meet"/>
+        <FIELD NAME="spacestatus" TYPE="char" LENGTH="12" NOTNULL="true" DEFAULT="pending" COMMENT="Only meaningful for meet: pending, creating, ready, error or uncertain"/>
+        <FIELD NAME="spaceversion" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="legacy"/>
+        <FIELD NAME="spaceattempts" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="spacemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="spacenextattempt" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Not-before time after explicit quota rejection; zero means immediately eligible"/>
+        <FIELD NAME="spacehttpstatus" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>

@@ -172,3 +172,20 @@ $string['poccleanup'] = 'Manual cleanup: retain the Space name, Meet link and bo
 $string['pocfallbackack'] = 'I reviewed the native attempt and any event it may have created, checked for an unexpected Meet, and authorize a separate fallback event and an invitation to the selected teacher (sendUpdates=all).';
 $string['pocclear'] = 'Clear local PoC results';
 $string['pocclearack'] = 'I retained the resource IDs and completed or arranged manual Google cleanup. This only clears the local temporary experiment.';
+
+$string['spacelabel'] = 'Google Meet';
+$string['meetingunavailable'] = 'The Google Meet link is not available yet. Please contact the course teacher if it remains unavailable.';
+$string['spacepending'] = 'Pending';
+$string['spacecreating'] = 'Creation attempted';
+$string['spaceready'] = 'Ready';
+$string['spaceerror'] = 'Creation rejected';
+$string['spaceuncertain'] = 'Uncertain: manual review required';
+$string['spacefailed'] = 'The Space creation could not be confirmed.';
+$string['spaceuncertainnotice'] = 'Google may have created this Space, but Moodle could not confirm the result. Automatic creation is stopped to prevent a second Meet. An administrator must review the outcome; do not recreate the activity as a retry.';
+$string['retryspace'] = 'Retry rejected Space creation';
+$string['calendarpending'] = 'Pending';
+$string['calendarready'] = 'Synchronized';
+$string['calendarerror'] = 'Error';
+$string['calendarindependenterror'] = 'Calendar could not be synchronized. The existing Google Meet link remains available.';
+$string['cohosthistorical'] = 'Meeting created with the historical Calendar model. Automatic cohost assignment is unavailable for this Space. Existing manual assignments are preserved.';
+$string['privacy:metadata:calendarattendee'] = 'The verified course teacher email is sent to Google Calendar as an invited attendee of the Meet-first event.';

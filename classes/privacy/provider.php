@@ -57,6 +57,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'name' => 'privacy:metadata:calendarname',
             'intro' => 'privacy:metadata:calendarintro',
             'schedule' => 'privacy:metadata:calendarschedule',
+            'cohostemail' => 'privacy:metadata:calendarattendee',
             'pocattendee' => 'privacy:metadata:pocattendee',
         ], 'privacy:metadata:googlecalendar');
         $collection->add_external_location_link('googlemeet', [

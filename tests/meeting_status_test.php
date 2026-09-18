@@ -49,6 +49,7 @@ final class meeting_status_test extends \advanced_testcase {
         $PAGE->set_context($context);
         $PAGE->set_url('/mod/tupmeet/view.php', ['id' => $meeting->cmid]);
         $meeting->syncstatus = 'ready';
+        $meeting->provisionmode = 'calendar';
         $meeting->meeturi = 'https://meet.google.com/abc-defg-hij';
         $meeting->meetconfigstatus = 'error';
         $teacher = $this->getDataGenerator()->create_user();
@@ -94,6 +95,7 @@ final class meeting_status_test extends \advanced_testcase {
         $PAGE->set_context($context);
         $PAGE->set_url('/mod/tupmeet/view.php', ['id' => $meeting->cmid]);
         $meeting->syncstatus = 'ready';
+        $meeting->provisionmode = 'calendar';
         $meeting->meetconfigstatus = 'ready';
         $meeting->meeturi = 'https://meet.google.com/abc-defg-hij';
         $meeting->cohoststatus = 'error';
@@ -124,5 +126,47 @@ final class meeting_status_test extends \advanced_testcase {
         $meeting->cohoststatus = 'ready';
         $html = meeting_status::render($meeting, $context, (int) $meeting->cmid);
         $this->assertStringNotContainsString(get_string('cohosterrorstage', 'tupmeet'), $html);
+    }
+
+    /**
+     * Calendar failure keeps Meet-first joining available and diagnostics private.
+     */
+    public function test_meet_first_join_and_uncertain_visibility(): void {
+        global $DB, $PAGE;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $this->redirectMessages();
+        $issuer = testing\issuer::create();
+        $DB->insert_record('tupmeet_accounts', (object) ['displayname' => 'Fixture',
+            'googleemail' => 'fixture@example.invalid', 'googlesub' => 'synthetic', 'enabled' => 1,
+            'isdefault' => 1, 'connectionstatus' => 'verified', 'issuerid' => $issuer->get('id')]);
+        $course = $this->getDataGenerator()->create_course();
+        $meeting = $this->getDataGenerator()->create_module('tupmeet', ['course' => $course->id]);
+        $context = \context_module::instance($meeting->cmid);
+        $PAGE->set_context($context);
+        $PAGE->set_url('/mod/tupmeet/view.php', ['id' => $meeting->cmid]);
+        $meeting->spacestatus = 'ready';
+        $meeting->syncstatus = 'error';
+        $meeting->meetspacename = 'spaces/Permanent_1';
+        $meeting->meetingcode = 'abc-defg-hij';
+        $meeting->meeturi = 'https://meet.google.com/abc-defg-hij';
+        $html = meeting_status::render($meeting, $context, (int) $meeting->cmid);
+        $this->assertStringContainsString($meeting->meeturi, $html);
+        $this->assertStringContainsString(get_string('calendarindependenterror', 'tupmeet'), $html);
+        $student = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($student->id, $course->id, 'student');
+        $this->setUser($student);
+        $html = meeting_status::render($meeting, $context, (int) $meeting->cmid);
+        $this->assertStringContainsString($meeting->meeturi, $html);
+        $this->assertStringNotContainsString('retry.php', $html);
+        $this->assertStringNotContainsString(get_string('calendarindependenterror', 'tupmeet'), $html);
+        $meeting->spacestatus = 'uncertain';
+        $html = meeting_status::render($meeting, $context, (int) $meeting->cmid);
+        $this->assertStringNotContainsString($meeting->meeturi, $html);
+        $this->assertStringNotContainsString(get_string('spaceuncertainnotice', 'tupmeet'), $html);
+        $this->setAdminUser();
+        $html = meeting_status::render($meeting, $context, (int) $meeting->cmid);
+        $this->assertStringContainsString(get_string('spaceuncertainnotice', 'tupmeet'), $html);
+        $this->assertStringNotContainsString('retry.php', $html);
     }
 }

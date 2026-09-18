@@ -172,3 +172,20 @@ $string['poccleanup'] = 'Limpieza manual: conserva el nombre del Space, el enlac
 $string['pocfallbackack'] = 'Revisé el intento nativo y cualquier evento que pudiera haber creado, comprobé si apareció otro Meet y autorizo un evento fallback separado con invitación al docente seleccionado (sendUpdates=all).';
 $string['pocclear'] = 'Limpiar resultados locales de la PoC';
 $string['pocclearack'] = 'Conservé los IDs y completé o coordiné la limpieza manual en Google. Esto solo limpia el experimento temporal local.';
+
+$string['spacelabel'] = 'Google Meet';
+$string['meetingunavailable'] = 'El enlace de Google Meet todavía no está disponible. Si continúa así, consulta al docente del curso.';
+$string['spacepending'] = 'Pendiente';
+$string['spacecreating'] = 'Creación intentada';
+$string['spaceready'] = 'Lista';
+$string['spaceerror'] = 'Creación rechazada';
+$string['spaceuncertain'] = 'Resultado incierto: requiere revisión manual';
+$string['spacefailed'] = 'No se pudo confirmar la creación del Space.';
+$string['spaceuncertainnotice'] = 'Google podría haber creado el Space, pero Moodle no pudo confirmar el resultado. La creación automática se detuvo para evitar un segundo Meet. Un administrador debe revisar el resultado; no vuelva a crear la actividad como reintento.';
+$string['retryspace'] = 'Reintentar creación rechazada del Space';
+$string['calendarpending'] = 'Pendiente';
+$string['calendarready'] = 'Sincronizado';
+$string['calendarerror'] = 'Error';
+$string['calendarindependenterror'] = 'No se pudo sincronizar Calendar. El enlace existente de Google Meet sigue disponible.';
+$string['cohosthistorical'] = 'Reunión creada con el modelo Calendar histórico. La asignación automática de coorganizador no está disponible para este Space. Se conservan las asignaciones manuales existentes.';
+$string['privacy:metadata:calendarattendee'] = 'El correo verificado del docente del curso se envía a Google Calendar como invitado del evento Meet-first.';

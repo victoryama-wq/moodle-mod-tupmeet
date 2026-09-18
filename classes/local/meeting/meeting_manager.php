@@ -74,6 +74,7 @@ class meeting_manager {
                 throw new \moodle_exception('duplicatesubmission', 'mod_tupmeet');
             }
             $this->prepare($record);
+            space_manager::prepare($record);
             meet_config_manager::prepare($record);
             $record->timecreated = time();
             $record->timemodified = time();
@@ -82,7 +83,7 @@ class meeting_manager {
             $stored = $DB->get_record('tupmeet', ['id' => $record->id], '*', MUST_EXIST);
             schedule::payload($stored);
             $stored = cohost_manager::save($stored, (int) ($data->cohostuserid ?? 0), true);
-            $this->queue($stored);
+            space_manager::queue($stored);
             $transaction->allow_commit();
             return (int) $stored->id;
         } catch (\Throwable $e) {
@@ -117,9 +118,15 @@ class meeting_manager {
         try {
             $record = $DB->get_record('tupmeet', ['id' => $data->id], '*', MUST_EXIST);
             cohost_manager::save($record, isset($data->cohostuserid) ? (int) $data->cohostuserid : null);
-            $calendarchanged = $record->syncstatus !== 'ready';
+            $explicitretry = !array_intersect_key((array) $data, array_flip(self::EDITABLE));
+            $calendarchanged = $record->syncstatus !== 'ready' && (!provisioning::is_meet($record) || $explicitretry);
+            $artifactschanged = !provisioning::is_meet($record) ||
+                ($explicitretry && $record->meetconfigstatus !== 'ready');
             foreach (self::EDITABLE as $field) {
                 if (property_exists($data, $field)) {
+                    if (in_array($field, ['autorecord', 'autotranscript'], true) && $record->{$field} != $data->{$field}) {
+                        $artifactschanged = true;
+                    }
                     if (
                         !in_array($field, ['autorecord', 'autotranscript', 'publicationmode'], true) &&
                             (string) $record->{$field} !== (string) $data->{$field}
@@ -133,22 +140,30 @@ class meeting_manager {
             if ($calendarchanged) {
                 $this->prepare($record);
             }
-            meet_config_manager::prepare($record);
+            if ($artifactschanged) {
+                meet_config_manager::prepare($record);
+            }
             $record->timemodified = time();
             // Do not rewrite Google response fields from a snapshot taken before concurrent HTTP.
-            $fields = array_merge(self::EDITABLE, [
-                'id', 'timemodified', 'meetconfigversion', 'meetconfigstatus', 'meetconfigattempts', 'meetconfigmodified',
-            ]);
+            $fields = array_merge(self::EDITABLE, ['id', 'timemodified']);
+            if ($artifactschanged) {
+                $fields = array_merge($fields, [
+                    'meetconfigversion', 'meetconfigstatus', 'meetconfigattempts', 'meetconfigmodified',
+                ]);
+            }
             if ($calendarchanged) {
                 $fields = array_merge($fields, ['creationkey', 'calendareventid', 'syncversion', 'syncstatus']);
             }
             $DB->update_record('tupmeet', (object) array_intersect_key((array) $record, array_flip($fields)));
             if ($calendarchanged) {
-                $this->queue($record);
-            } else {
+                self::queue($record);
+            }
+            if ($artifactschanged || !provisioning::is_meet($record)) {
                 meet_config_manager::queue($record);
             }
-            cohost_manager::queue($DB->get_record('tupmeet', ['id' => $record->id], '*', MUST_EXIST));
+            $current = $DB->get_record('tupmeet', ['id' => $record->id], '*', MUST_EXIST);
+            cohost_manager::queue($current);
+            space_manager::queue($current);
             $transaction->allow_commit();
             return true;
         } catch (\Throwable $e) {
@@ -161,7 +176,13 @@ class meeting_manager {
      *
      * @param \stdClass $record Saved activity
      */
-    private function queue(\stdClass $record): void {
+    public static function queue(\stdClass $record): void {
+        if (
+            !in_array($record->syncstatus, ['pending', 'error'], true) ||
+                (provisioning::is_meet($record) && !provisioning::space_ready($record))
+        ) {
+            return;
+        }
         $task = new \mod_tupmeet\task\sync_meeting();
         $task->set_custom_data(['id' => (int) $record->id, 'version' => $record->syncversion]);
         $task->set_component('mod_tupmeet');
@@ -172,9 +193,10 @@ class meeting_manager {
      * Reconcile only committed state. Failures remain visible and tasks retry safely.
      *
      * @param int $id Activity ID
+     * @param string|null $version Worker revision; stale tasks retire before HTTP
      * @return bool Ready, deleted, or no work; false requests a retry
      */
-    public function synchronize(int $id): bool {
+    public function synchronize(int $id, ?string $version = null): bool {
         global $DB;
         if ($DB->is_transaction_started()) {
             throw new \coding_exception('Calendar synchronization must run after the database commit.');
@@ -185,12 +207,26 @@ class meeting_manager {
         }
         try {
             $record = $DB->get_record('tupmeet', ['id' => $id]);
-            if (!$record || in_array($record->syncstatus, ['ready', 'legacy'], true)) {
+            if (
+                !$record || ($version !== null && $version !== $record->syncversion) ||
+                    in_array($record->syncstatus, ['ready', 'legacy'], true) ||
+                    (provisioning::is_meet($record) && !provisioning::space_ready($record))
+            ) {
                 return true;
             }
             try {
                 $account = (new account_manager())->get_account((int) $record->accountid);
+                if (provisioning::is_meet($record)) {
+                    cohost_manager::check_identity($record);
+                }
                 $result = $this->calendar->synchronize($account, $record);
+                if (provisioning::is_meet($record)) {
+                    // Calendar may never overwrite permanent Meet-first identifiers, including on errors.
+                    $result = array_intersect_key($result, array_flip(['syncstatus', 'lastsync']));
+                } else if (!empty($record->meeturi) && ($result['meeturi'] ?? null) !== $record->meeturi) {
+                    // Historical links are never silently replaced by a provider response or absence.
+                    $result = ['syncstatus' => 'error'];
+                }
             } catch (\Throwable $e) {
                 // Do not log exception details: even OAuth library exceptions can contain credentials.
                 $result = ['syncstatus' => 'error'];

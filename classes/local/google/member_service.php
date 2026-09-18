@@ -195,6 +195,7 @@ class member_service {
             $email = $meeting->cohostemail;
             $stage = 'list';
             $member = $this->find($client, $space, $email, $current);
+            $written = false;
             if (!$current()) {
                 throw new \RuntimeException();
             }
@@ -203,6 +204,7 @@ class member_service {
                 [$status, $member] = $this->request($client, 'POST', self::API . $space . '/members', [
                     'email' => $email, 'role' => 'COHOST',
                 ]);
+                $written = $status !== 409;
                 if ($status === 409) {
                     $stage = 'list';
                     $member = $this->find($client, $space, $email, $current);
@@ -220,10 +222,18 @@ class member_service {
                     throw new \RuntimeException();
                 }
                 $member = $result;
+                $written = true;
             }
             $this->validate($member, $space);
             if (strcasecmp($member['email'], $email) !== 0 || ($member['role'] ?? '') !== 'COHOST') {
                 throw new \RuntimeException();
+            }
+            if ($written && \mod_tupmeet\local\meeting\provisioning::is_meet($meeting)) {
+                $stage = 'list';
+                $confirmed = $this->find($client, $space, $email, $current);
+                if (($confirmed['name'] ?? '') !== $member['name'] || ($confirmed['role'] ?? '') !== 'COHOST') {
+                    throw new \RuntimeException();
+                }
             }
             return $member['name'];
         } catch (cohost_exception $e) {

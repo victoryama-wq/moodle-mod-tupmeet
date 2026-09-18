@@ -120,5 +120,26 @@ function xmldb_tupmeet_upgrade($oldversion): bool {
         // Existing errors have no known stage. Preserve identities, statuses and retry budgets; no HTTP or tasks.
         upgrade_mod_savepoint(true, 2026091702, 'tupmeet');
     }
+    if ($oldversion < 2026091801) {
+        $table = new xmldb_table('tupmeet');
+        $fields = [
+            new xmldb_field('provisionmode', XMLDB_TYPE_CHAR, '8', null, XMLDB_NOTNULL, null, 'calendar', 'cohosthttpstatus'),
+            new xmldb_field('spacestatus', XMLDB_TYPE_CHAR, '12', null, XMLDB_NOTNULL, null, 'pending', 'provisionmode'),
+            new xmldb_field('spaceversion', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, 'legacy', 'spacestatus'),
+            new xmldb_field('spaceattempts', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'spaceversion'),
+            new xmldb_field('spacemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'spaceattempts'),
+            new xmldb_field('spacenextattempt', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'spacemodified'),
+            new xmldb_field('spacehttpstatus', XMLDB_TYPE_INTEGER, '3', null, XMLDB_NOTNULL, null, '0', 'spacenextattempt'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        // Classify only. Never infer a Space, queue work, call HTTP, or alter historical identifiers/preferences.
+        $DB->set_field('tupmeet', 'provisionmode', 'calendar');
+        $DB->set_field('tupmeet', 'provisionmode', 'legacy', ['syncstatus' => 'legacy']);
+        upgrade_mod_savepoint(true, 2026091801, 'tupmeet');
+    }
     return true;
 }

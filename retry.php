@@ -35,16 +35,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     throw new moodle_exception('invalidrequest', 'mod_tupmeet');
 }
 $target = optional_param('target', 'all', PARAM_ALPHA);
-if (!in_array($target, ['all', 'cohost'], true)) {
+if (!in_array($target, ['all', 'cohost', 'space'], true)) {
     throw new moodle_exception('invalidrequest', 'mod_tupmeet');
 }
-if ($target === 'cohost') {
+if ($target === 'space') {
+    \mod_tupmeet\local\meeting\space_manager::retry((int) $cm->instance);
+    \mod_tupmeet\observer::reconcile((int) $cm->instance);
+} else if ($target === 'cohost') {
     \mod_tupmeet\local\meeting\cohost_manager::retry((int) $cm->instance);
+    (new \mod_tupmeet\local\meeting\cohost_manager())->synchronize((int) $cm->instance);
 } else {
     $manager = new \mod_tupmeet\local\meeting\meeting_manager();
     $manager->update((object) ['id' => $cm->instance]);
-    $manager->synchronize((int) $cm->instance);
-    (new \mod_tupmeet\local\meeting\meet_config_manager())->synchronize((int) $cm->instance);
+    \mod_tupmeet\observer::reconcile((int) $cm->instance);
 }
-(new \mod_tupmeet\local\meeting\cohost_manager())->synchronize((int) $cm->instance);
 redirect(new moodle_url('/mod/tupmeet/view.php', ['id' => $cm->id]));

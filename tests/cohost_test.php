@@ -149,7 +149,7 @@ final class cohost_test extends \advanced_testcase {
             )->format('D'))]), 'recurrenceinterval' => 1, 'recurrenceuntil' => 1794056400,
         ]);
         $DB->update_record('tupmeet', (object) [
-            'id' => $id, 'syncstatus' => 'ready', 'meetconfigstatus' => 'ready',
+            'id' => $id, 'syncstatus' => 'ready', 'meetconfigstatus' => 'ready', 'spacestatus' => 'ready',
             'meetspacename' => 'spaces/Stable_1', 'meetingcode' => 'abc-defg-hij',
             'meeturi' => 'https://meet.google.com/abc-defg-hij',
         ]);
@@ -241,7 +241,7 @@ final class cohost_test extends \advanced_testcase {
         $after = $DB->get_record('tupmeet', ['id' => $record->id]);
         $this->assertSame('ready', $after->cohoststatus);
         $this->assertSame($this->member()['name'], $after->cohostmembername);
-        $this->assertSame(['GET', 'POST'], array_column($this->calls, 1));
+        $this->assertSame(['GET', 'POST', 'GET'], array_column($this->calls, 1));
         $this->assertSame('https://meet.googleapis.com/v2/spaces/Stable_1/members?pageSize=500', $this->calls[0][2]);
         foreach (
             ['accountid', 'calendareventid', 'meeturi', 'meetingcode', 'meetspacename', 'syncstatus',
@@ -270,7 +270,7 @@ final class cohost_test extends \advanced_testcase {
         $record = $this->meeting();
         $this->members = [$this->member('ROLE_UNSPECIFIED')];
         $this->assertTrue($this->manager->synchronize((int) $record->id));
-        $this->assertSame(['GET', 'PATCH'], array_column($this->calls, 1));
+        $this->assertSame(['GET', 'PATCH', 'GET'], array_column($this->calls, 1));
         $this->assertCount(1, $this->members);
     }
 
@@ -386,18 +386,18 @@ final class cohost_test extends \advanced_testcase {
     }
 
     /**
-     * Failed artifact settings do not prevent first-time Space resolution and membership.
+     * Failed artifact settings do not prevent membership on the permanent Space.
      */
     public function test_independent_resolution_despite_artifact_error(): void {
         global $DB;
         $record = $this->meeting();
         $DB->update_record('tupmeet', (object) [
-            'id' => $record->id, 'meetspacename' => null, 'meetconfigstatus' => 'error',
+            'id' => $record->id, 'meetconfigstatus' => 'error',
         ]);
         $this->assertTrue($this->manager->synchronize((int) $record->id));
         $this->assertSame('spaces/Stable_1', $DB->get_field('tupmeet', 'meetspacename', ['id' => $record->id]));
         $this->assertSame('error', $DB->get_field('tupmeet', 'meetconfigstatus', ['id' => $record->id]));
-        $this->assertStringEndsWith('/spaces/abc-defg-hij', $this->calls[0][2]);
+        $this->assertStringEndsWith('/spaces/Stable_1/members', parse_url($this->calls[0][2], PHP_URL_PATH));
     }
 
     /**
@@ -418,7 +418,7 @@ final class cohost_test extends \advanced_testcase {
         foreach ($this->calls as $call) {
             $this->assertEquals($owner->issuerid, $call[0]);
         }
-        $this->assertSame(['GET', 'POST', 'GET'], array_column($this->calls, 1));
+        $this->assertSame(['GET', 'POST', 'GET', 'GET'], array_column($this->calls, 1));
     }
 
     /**
@@ -469,7 +469,7 @@ final class cohost_test extends \advanced_testcase {
         }
         $this->assertCount(5, $this->calls);
         $this->assertEquals($count, $DB->count_records('task_adhoc'));
-        (new meeting_manager())->update((object) ['id' => $record->id]);
+        cohost_manager::retry((int) $record->id);
         $saved = $DB->get_record('tupmeet', ['id' => $record->id]);
         $this->assertEquals(0, $saved->cohostattempts);
         $this->assertNotSame($record->cohostversion, $saved->cohostversion);
@@ -490,7 +490,7 @@ final class cohost_test extends \advanced_testcase {
         $this->duringhttp = function ($method) use ($phase, $record) {
             if ($method === $phase) {
                 $this->duringhttp = null;
-                (new meeting_manager())->update((object) ['id' => $record->id]);
+                cohost_manager::retry((int) $record->id);
             }
         };
         $this->assertTrue($this->manager->synchronize((int) $record->id));
@@ -588,12 +588,13 @@ final class cohost_test extends \advanced_testcase {
     }
 
     /**
-     * No resolution or membership requests are sent while Calendar is pending.
+     * Historical Calendar pending activities cannot dispatch membership writes.
      */
     public function test_calendar_pending_no_http(): void {
         global $DB;
         $record = $this->meeting();
         $DB->set_field('tupmeet', 'syncstatus', 'pending', ['id' => $record->id]);
+        $DB->set_field('tupmeet', 'provisionmode', 'calendar', ['id' => $record->id]);
         $this->assertTrue($this->manager->synchronize((int) $record->id));
         $this->assertSame([], $this->calls);
     }
@@ -802,12 +803,10 @@ final class cohost_test extends \advanced_testcase {
         $this->assertSame('identity', $DB->get_field('tupmeet', 'cohosterrorstage', ['id' => $record->id]));
         $this->assertSame([], $this->calls);
         $DB->set_field('user', 'suspended', 0, ['id' => $this->teacher->id]);
-        $DB->set_field('tupmeet', 'meetspacename', null, ['id' => $record->id]);
         $this->failure = 404;
         $this->assertFalse($this->manager->synchronize((int) $record->id));
-        $this->assertSame('space', $DB->get_field('tupmeet', 'cohosterrorstage', ['id' => $record->id]));
-        // The unchanged Phase 3 resolver intentionally does not expose an HTTP status.
-        $this->assertEquals(0, $DB->get_field('tupmeet', 'cohosthttpstatus', ['id' => $record->id]));
+        $this->assertSame('list', $DB->get_field('tupmeet', 'cohosterrorstage', ['id' => $record->id]));
+        $this->assertEquals(404, $DB->get_field('tupmeet', 'cohosthttpstatus', ['id' => $record->id]));
     }
 
     /**

@@ -87,7 +87,9 @@ class mod_tupmeet_mod_form extends moodleform_mod {
         $mform->setDefault('autotranscript', 0);
 
         // A stored selection is immutable, including uncertain remote outcomes and privacy erasure.
-        if (!empty($this->current->cohostlocked)) {
+        if (!empty($this->current->instance) && !\mod_tupmeet\local\meeting\provisioning::is_meet($this->current)) {
+            $mform->addElement('static', 'cohosthistorical', '', get_string('cohosthistorical', 'tupmeet'));
+        } else if (!empty($this->current->cohostlocked)) {
             $mform->addElement(
                 'static',
                 'cohostlockednotice',

@@ -195,6 +195,7 @@ final class meet_config_test extends \advanced_testcase {
      * @return int Activity ID
      */
     private function meeting(int $record = 1, int $transcript = 0, bool $recurring = false): int {
+        global $DB;
         $start = (new \DateTimeImmutable('2026-10-10T09:00:00-05:00'))->getTimestamp();
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_user();
@@ -206,6 +207,7 @@ final class meet_config_test extends \advanced_testcase {
             'isrecurring' => (int) $recurring, 'recurrenceinterval' => 1,
             'recurrencedays' => '["sat"]', 'recurrenceuntil' => $start + 4 * WEEKSECS,
         ]);
+        $DB->set_field('tupmeet', 'provisionmode', 'calendar', ['id' => $id]);
         $this->assertTrue($this->meetings->synchronize($id));
         return $id;
     }

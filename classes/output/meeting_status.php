@@ -18,6 +18,7 @@ namespace mod_tupmeet\output;
 
 use mod_tupmeet\local\google\calendar_service;
 use mod_tupmeet\local\google\cohost_exception;
+use mod_tupmeet\local\meeting\provisioning;
 
 /**
  * Separate joining availability from teacher-only artifact configuration details.
@@ -38,19 +39,23 @@ class meeting_status {
     public static function render(\stdClass $meeting, \context_module $context, int $cmid): string {
         global $OUTPUT, $DB;
         $manage = has_capability('moodle/course:manageactivities', $context);
-        $ready = $meeting->syncstatus === 'ready' && calendar_service::valid_meet_uri($meeting->meeturi ?? '');
+        $meetfirst = provisioning::is_meet($meeting);
+        $ready = ($meetfirst ? ($meeting->spacestatus ?? '') === 'ready' : $meeting->syncstatus === 'ready') &&
+            calendar_service::valid_meet_uri($meeting->meeturi ?? '');
         $retryurl = new \moodle_url('/mod/tupmeet/retry.php', ['id' => $cmid]);
         $html = '';
         if ($ready) {
             $html .= \html_writer::link(new \moodle_url($meeting->meeturi), get_string('joinmeet', 'tupmeet'), [
                 'class' => 'btn btn-primary', 'target' => '_blank', 'rel' => 'noopener noreferrer',
             ]);
-        } else {
+        } else if (!$meetfirst) {
             $status = in_array($meeting->syncstatus, ['pending', 'error', 'legacy'], true) ? $meeting->syncstatus : 'error';
             $html .= $OUTPUT->notification(get_string('sync' . $status, 'tupmeet'), $status === 'error' ? 'warning' : 'info');
             if ($manage && $status !== 'legacy') {
                 $html .= $OUTPUT->single_button($retryurl, get_string('retrysync', 'tupmeet'), 'post');
             }
+        } else {
+            $html .= $OUTPUT->notification(get_string('meetingunavailable', 'tupmeet'), 'info');
         }
         if (!$manage) {
             return $html;
@@ -58,9 +63,31 @@ class meeting_status {
         $status = in_array($meeting->meetconfigstatus, ['pending', 'ready', 'error', 'unconfigured'], true)
             ? $meeting->meetconfigstatus : 'error';
         $table = new \html_table();
-        $table->data[] = [
-            get_string('meetsettings', 'tupmeet'), get_string($ready ? 'meetingavailable' : 'syncpending', 'tupmeet'),
-        ];
+        if (!$meetfirst) {
+            $table->data[] = [
+                get_string('meetsettings', 'tupmeet'), get_string($ready ? 'meetingavailable' : 'syncpending', 'tupmeet'),
+            ];
+        }
+        if ($meetfirst) {
+            $spacestatus = in_array($meeting->spacestatus, ['pending', 'creating', 'ready', 'error', 'uncertain'], true)
+                ? $meeting->spacestatus : 'uncertain';
+            $table->data[] = [get_string('spacelabel', 'tupmeet'), get_string('space' . $spacestatus, 'tupmeet')];
+            $calendarstatus = in_array($meeting->syncstatus, ['pending', 'ready', 'error'], true)
+                ? $meeting->syncstatus : 'error';
+            $table->data[] = ['Calendar', get_string('calendar' . $calendarstatus, 'tupmeet')];
+            if ($spacestatus === 'uncertain') {
+                $html .= $OUTPUT->notification(get_string('spaceuncertainnotice', 'tupmeet'), 'warning');
+            } else if ($spacestatus === 'error') {
+                $spaceurl = new \moodle_url('/mod/tupmeet/retry.php', ['id' => $cmid, 'target' => 'space']);
+                $html .= $OUTPUT->single_button($spaceurl, get_string('retryspace', 'tupmeet'), 'post');
+            }
+            if ($ready && $calendarstatus === 'error') {
+                $html .= $OUTPUT->notification(get_string('calendarindependenterror', 'tupmeet'), 'warning');
+                $html .= $OUTPUT->single_button($retryurl, get_string('retrysync', 'tupmeet'), 'post');
+            }
+        } else {
+            $html .= $OUTPUT->notification(get_string('cohosthistorical', 'tupmeet'), 'info');
+        }
         foreach (['autorecord', 'autotranscript'] as $field) {
             $label = $status === 'ready' ? (empty($meeting->{$field}) ? 'artifactoff' : 'artifacton') : 'meetconfig' . $status;
             $table->data[] = [get_string($field, 'tupmeet'), get_string($label, 'tupmeet')];
@@ -85,7 +112,7 @@ class meeting_status {
             $html .= $OUTPUT->notification(get_string('meetconfig' . $status . 'notice', 'tupmeet'), 'warning');
             $html .= $OUTPUT->single_button($retryurl, get_string('retryartifactconfig', 'tupmeet'), 'post');
         }
-        if ($ready && $cohoststatus === 'error' && !empty($meeting->cohostuserid)) {
+        if ($meetfirst && $ready && $cohoststatus === 'error' && !empty($meeting->cohostuserid)) {
             $html .= $OUTPUT->notification(get_string('cohostfailed', 'tupmeet'), 'warning');
             $cohosturl = new \moodle_url('/mod/tupmeet/retry.php', ['id' => $cmid, 'target' => 'cohost']);
             $html .= $OUTPUT->single_button($cohosturl, get_string('retrycohost', 'tupmeet'), 'post');

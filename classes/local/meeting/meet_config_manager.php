@@ -55,13 +55,13 @@ class meet_config_manager {
     }
 
     /**
-     * Queue only a ready Calendar's pending configuration, atomically with the caller's DB change.
+     * Queue configuration after Space readiness, or historical Calendar readiness, within the caller's transaction.
      *
      * @param \stdClass $record Saved activity
      */
     public static function queue(\stdClass $record): void {
         if (
-            $record->syncstatus !== 'ready' ||
+            !provisioning::artifacts_ready($record) ||
                 !in_array($record->meetconfigstatus, ['pending', 'error'], true) ||
                 $record->meetconfigattempts >= self::MAX_ATTEMPTS
         ) {
@@ -74,24 +74,25 @@ class meet_config_manager {
     }
 
     /**
-     * Persist results only for the exact Calendar and Meet revisions that generated them.
+     * Persist results only for this artifact revision and the applicable provisioning prerequisites.
      *
      * @param \stdClass $record Snapshot
      * @param array $values Internally supplied Meet fields
      */
     private function write(\stdClass $record, array $values): void {
         global $DB;
-        $params = ['id' => $record->id, 'version' => $record->meetconfigversion, 'calendarversion' => $record->syncversion];
+        $params = [];
         $assignments = [];
         foreach ($values as $field => $value) {
             $assignments[] = $field . ' = :' . $field;
             $params[$field] = $value;
         }
-        $DB->execute(
-            'UPDATE {tupmeet} SET ' . implode(', ', $assignments) .
-            " WHERE id = :id AND meetconfigversion = :version AND syncversion = :calendarversion AND syncstatus = 'ready'",
-            $params
-        );
+        $conditions = [];
+        foreach (provisioning::conditions($record, 'meetconfigversion') as $field => $value) {
+            $conditions[] = $field . ' = :where' . $field;
+            $params['where' . $field] = $value;
+        }
+        $DB->execute('UPDATE {tupmeet} SET ' . implode(', ', $assignments) . ' WHERE ' . implode(' AND ', $conditions), $params);
     }
 
     /**
@@ -102,10 +103,7 @@ class meet_config_manager {
      */
     private function current(\stdClass $record): bool {
         global $DB;
-        return $DB->record_exists('tupmeet', [
-            'id' => $record->id, 'syncversion' => $record->syncversion,
-            'meetconfigversion' => $record->meetconfigversion, 'syncstatus' => 'ready',
-        ]);
+        return $DB->record_exists('tupmeet', provisioning::conditions($record, 'meetconfigversion'));
     }
 
     /**
@@ -120,7 +118,7 @@ class meet_config_manager {
         if ($DB->is_transaction_started()) {
             throw new \coding_exception('Meet configuration must run after the database commit.');
         }
-        // Share Calendar's lock so the two services cannot reconcile one activity concurrently.
+        // All provisioning services share this activity lock, including Space creation.
         $lock = \core\lock\lock_config::get_lock_factory('mod_tupmeet')->get_lock('meeting:' . $id, 0);
         if (!$lock) {
             return false;
@@ -129,7 +127,7 @@ class meet_config_manager {
             $record = $DB->get_record('tupmeet', ['id' => $id]);
             if (
                 !$record || ($version !== null && $version !== $record->meetconfigversion) ||
-                    $record->syncstatus !== 'ready' ||
+                    !provisioning::artifacts_ready($record) ||
                     !in_array($record->meetconfigstatus, ['pending', 'error'], true)
             ) {
                 return true;
@@ -147,6 +145,9 @@ class meet_config_manager {
                 $account = (new account_manager())->get_account((int) $record->accountid);
                 $this->meet->synchronize($account, $record, function (string $name) use ($record): bool {
                     global $DB;
+                    if (provisioning::is_meet($record) && $name !== $record->meetspacename) {
+                        return false;
+                    }
                     // Store the canonical identity before PATCH, including when PATCH will fail/timeout.
                     $this->write($record, ['meetspacename' => $name]);
                     return $this->current($record) && $DB->get_field('tupmeet', 'meetspacename', ['id' => $record->id]) === $name;

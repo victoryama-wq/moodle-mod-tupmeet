@@ -191,6 +191,9 @@ final class cohost_identity_test extends \core_privacy\tests\provider_testcase {
         $PAGE->set_url('/mod/tupmeet/view.php', ['id' => $activity->cmid]);
         $record = $DB->get_record('tupmeet', ['id' => $activity->id]);
         $record->syncstatus = 'ready';
+        $record->spacestatus = 'ready';
+        $record->meetspacename = 'spaces/Permanent_1';
+        $record->meetingcode = 'abc-defg-hij';
         $record->meetconfigstatus = 'ready';
         $record->autorecord = 1;
         $record->autotranscript = 1;

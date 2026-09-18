@@ -48,7 +48,7 @@ class cohost_manager {
      *
      * @param \stdClass $record Persisted identity
      */
-    private static function check_identity(\stdClass $record): void {
+    public static function check_identity(\stdClass $record): void {
         try {
             $user = cohost_identity::resolve((int) $record->course, (int) $record->cohostuserid);
             if ($user->email !== $record->cohostemail) {
@@ -67,15 +67,19 @@ class cohost_manager {
      * @param \stdClass $record Current activity
      * @param int|null $userid Submitted ID, null for unrelated edits/retries
      * @param bool $required New activities must select an eligible teacher
+     * @param bool $retry Explicit membership retry only
      * @return \stdClass Updated activity snapshot
      */
-    public static function save(\stdClass $record, ?int $userid, bool $required = false): \stdClass {
+    public static function save(\stdClass $record, ?int $userid, bool $required = false, bool $retry = false): \stdClass {
         global $DB;
         if (!$DB->is_transaction_started()) {
             throw new \coding_exception('Cohost selection must be part of the activity transaction.');
         }
         if ($record->cohostlocked && $userid !== null && $userid !== (int) $record->cohostuserid) {
             throw new \moodle_exception('cohostlocked', 'mod_tupmeet');
+        }
+        if (!provisioning::is_meet($record) || ($record->cohostlocked && !$retry)) {
+            return $record;
         }
         if (!$record->cohostlocked && $userid) {
             $user = cohost_identity::resolve((int) $record->course, $userid);
@@ -115,7 +119,7 @@ class cohost_manager {
         $transaction = $DB->start_delegated_transaction();
         try {
             $record = $DB->get_record('tupmeet', ['id' => $id], '*', MUST_EXIST);
-            self::queue(self::save($record, null));
+            self::queue(self::save($record, null, false, true));
             $transaction->allow_commit();
         } catch (\Throwable $e) {
             $transaction->rollback($e);
@@ -142,7 +146,7 @@ class cohost_manager {
      */
     public static function queue(\stdClass $record): void {
         if (
-            $record->syncstatus !== 'ready' ||
+            !provisioning::space_ready($record) ||
                 !in_array($record->cohoststatus, ['pending', 'error'], true) ||
                 $record->cohostattempts >= self::MAX_ATTEMPTS
         ) {
@@ -155,24 +159,25 @@ class cohost_manager {
     }
 
     /**
-     * Persist results only for the exact Calendar and Meet revisions that generated them.
+     * Persist results only for the independent membership revision and its permanent Space.
      *
      * @param \stdClass $record Snapshot
      * @param array $values Internally supplied Meet fields
      */
     private function write(\stdClass $record, array $values): void {
         global $DB;
-        $params = ['id' => $record->id, 'version' => $record->cohostversion, 'calendarversion' => $record->syncversion];
+        $params = [];
         $assignments = [];
         foreach ($values as $field => $value) {
             $assignments[] = $field . ' = :' . $field;
             $params[$field] = $value;
         }
-        $DB->execute(
-            'UPDATE {tupmeet} SET ' . implode(', ', $assignments) .
-            " WHERE id = :id AND cohostversion = :version AND syncversion = :calendarversion AND syncstatus = 'ready'",
-            $params
-        );
+        $conditions = [];
+        foreach (provisioning::conditions($record, 'cohostversion') as $field => $value) {
+            $conditions[] = $field . ' = :where' . $field;
+            $params['where' . $field] = $value;
+        }
+        $DB->execute('UPDATE {tupmeet} SET ' . implode(', ', $assignments) . ' WHERE ' . implode(' AND ', $conditions), $params);
     }
 
     /**
@@ -183,10 +188,7 @@ class cohost_manager {
      */
     private function current(\stdClass $record): bool {
         global $DB;
-        return $DB->record_exists('tupmeet', [
-            'id' => $record->id, 'syncversion' => $record->syncversion,
-            'cohostversion' => $record->cohostversion, 'syncstatus' => 'ready',
-        ]);
+        return $DB->record_exists('tupmeet', provisioning::conditions($record, 'cohostversion'));
     }
 
     /**
@@ -201,7 +203,7 @@ class cohost_manager {
         if ($DB->is_transaction_started()) {
             throw new \coding_exception('Cohost configuration must run after the database commit.');
         }
-        // Share Calendar's lock so all three services cannot reconcile one activity concurrently.
+        // All provisioning services share this activity lock, including Space creation.
         $lock = \core\lock\lock_config::get_lock_factory('mod_tupmeet')->get_lock('meeting:' . $id, 0);
         if (!$lock) {
             return false;
@@ -210,7 +212,7 @@ class cohost_manager {
             $record = $DB->get_record('tupmeet', ['id' => $id]);
             if (
                 !$record || ($version !== null && $version !== $record->cohostversion) ||
-                    $record->syncstatus !== 'ready' ||
+                    !provisioning::space_ready($record) ||
                     !in_array($record->cohoststatus, ['pending', 'error'], true)
             ) {
                 return true;
@@ -235,6 +237,9 @@ class cohost_manager {
                 $stage = 'unknown';
                 $member = $this->meet->synchronize($account, $record, function (string $name) use ($record): bool {
                     global $DB;
+                    if ($name !== $record->meetspacename) {
+                        return false;
+                    }
                     // Store the canonical identity before member writes, including when a write will fail/timeout.
                     $this->write($record, ['meetspacename' => $name]);
                     return $this->current($record) && $DB->get_field('tupmeet', 'meetspacename', ['id' => $record->id]) === $name;

@@ -18,6 +18,8 @@ namespace mod_tupmeet\local\google;
 
 use mod_tupmeet\local\account\oauth_client_factory;
 use mod_tupmeet\local\meeting\schedule;
+use mod_tupmeet\local\meeting\provisioning;
+use mod_tupmeet\local\meeting\cohost_identity;
 
 /**
  * Google Calendar primary-calendar operations through Moodle's native system client.
@@ -195,6 +197,9 @@ class calendar_service {
      * @return array Sanitized local identifiers and readiness
      */
     public function synchronize(\stdClass $account, \stdClass $meeting): array {
+        if (provisioning::is_meet($meeting)) {
+            return $this->synchronize_meet($account, $meeting);
+        }
         $client = $this->oauth->for_account($account);
         $event = $this->get_event($client, $meeting->calendareventid);
         if ($event === null) {
@@ -204,6 +209,18 @@ class calendar_service {
             $event = $this->create_event($client, $meeting);
         } else {
             $this->assert_event($meeting, $event);
+            if (!empty($meeting->meeturi)) {
+                $sameuri = false;
+                foreach ($event['conferenceData']['entryPoints'] ?? [] as $point) {
+                    if (($point['entryPointType'] ?? '') === 'video' && ($point['uri'] ?? '') === $meeting->meeturi) {
+                        $sameuri = true;
+                    }
+                }
+                if (!$sameuri) {
+                    // Never replace a known historical conference just because remote data disappeared.
+                    throw new \moodle_exception('calendarfailed', 'mod_tupmeet');
+                }
+            }
             $event = $this->update_event($client, $meeting, $event);
         }
         $this->assert_event($meeting, $event);
@@ -226,5 +243,140 @@ class calendar_service {
             'syncstatus' => $uri ? 'ready' : 'pending',
             'lastsync' => time(),
         ];
+    }
+
+    /**
+     * Native Calendar representation of the existing Space, without requesting another conference.
+     *
+     * @param \stdClass $meeting Confirmed Meet-first activity
+     * @return array Documented conference fields; no createRequest or invented signature
+     */
+    public static function native_conference(\stdClass $meeting): array {
+        $ids = space_service::identifiers(['name' => $meeting->meetspacename, 'meetingUri' => $meeting->meeturi,
+            'meetingCode' => $meeting->meetingcode]);
+        return ['conferenceId' => $ids['meetingcode'], 'conferenceSolution' => ['key' => ['type' => 'hangoutsMeet']],
+            'entryPoints' => [['entryPointType' => 'video', 'uri' => $ids['meeturi']]]];
+    }
+
+    /**
+     * Confirm the exact remote conference; successful HTTP alone never confirms synchronization.
+     *
+     * @param \stdClass $meeting Expected identity
+     * @param array $event Remote event
+     */
+    private function confirm_native(\stdClass $meeting, array $event): void {
+        $this->assert_event($meeting, $event);
+        $conference = $event['conferenceData'] ?? [];
+        $points = $conference['entryPoints'] ?? [];
+        $video = is_array($points) ? array_values(array_filter($points, static fn($point) =>
+            is_array($point) && ($point['entryPointType'] ?? '') === 'video')) : [];
+        if (
+            ($conference['conferenceId'] ?? '') !== $meeting->meetingcode ||
+            ($conference['conferenceSolution']['key']['type'] ?? '') !== 'hangoutsMeet' ||
+            count($video) !== 1 || ($video[0]['uri'] ?? '') !== $meeting->meeturi ||
+            (isset($event['hangoutLink']) && $event['hangoutLink'] !== $meeting->meeturi)
+        ) {
+            throw new \moodle_exception('calendarfailed', 'mod_tupmeet');
+        }
+    }
+
+    /**
+     * Verify that Google retained the authoritative attendee, not merely a submitted arbitrary address.
+     *
+     * @param \stdClass $meeting Validated identity
+     * @param array $event Event
+     */
+    private function confirm_attendee(\stdClass $meeting, array $event): void {
+        if (!is_array($event['attendees'] ?? null)) {
+            throw new \moodle_exception('calendarfailed', 'mod_tupmeet');
+        }
+        foreach ($event['attendees'] ?? [] as $attendee) {
+            if (is_string($attendee['email'] ?? null) && strcasecmp($attendee['email'], $meeting->cohostemail) === 0) {
+                return;
+            }
+        }
+        throw new \moodle_exception('calendarfailed', 'mod_tupmeet');
+    }
+
+    /**
+     * Reconcile a native event/series using one precreated Space and the immutable historical owner.
+     *
+     * @param \stdClass $account Owner
+     * @param \stdClass $meeting Desired state
+     * @return array Calendar-only readiness; never replace Space identifiers
+     */
+    private function synchronize_meet(\stdClass $account, \stdClass $meeting): array {
+        global $DB;
+        if ($DB->is_transaction_started()) {
+            throw new \coding_exception('Calendar synchronization must run after the database commit.');
+        }
+        if (!provisioning::space_ready($meeting)) {
+            throw new \moodle_exception('calendarfailed', 'mod_tupmeet');
+        }
+        $teacher = cohost_identity::resolve((int) $meeting->course, (int) $meeting->cohostuserid);
+        if ($teacher->email !== $meeting->cohostemail) {
+            throw new \moodle_exception('cohostinvalid', 'mod_tupmeet');
+        }
+        $client = $this->oauth->for_account($account);
+        $event = $this->get_event($client, $meeting->calendareventid);
+        // Recheck after the read and immediately before any invitation write.
+        $teacher = cohost_identity::resolve((int) $meeting->course, (int) $meeting->cohostuserid);
+        if ($teacher->email !== $meeting->cohostemail) {
+            throw new \moodle_exception('cohostinvalid', 'mod_tupmeet');
+        }
+        $payload = schedule::payload($meeting);
+        $payload['extendedProperties']['private'] = ['tupmeet' => $meeting->creationkey,
+            'tupmeetversion' => $meeting->syncversion];
+        $payload['attendees'] = [['email' => $teacher->email]];
+        if ($event === null) {
+            if ($meeting->lastsync) {
+                throw new \moodle_exception('calendarfailed', 'mod_tupmeet');
+            }
+            $payload['id'] = $meeting->calendareventid;
+            $payload['conferenceData'] = self::native_conference($meeting);
+            [$status, $result] = $this->request(
+                $client,
+                'POST',
+                self::EVENTS . '?conferenceDataVersion=1&sendUpdates=all',
+                $payload
+            );
+            if ($status !== 409) {
+                $this->assert_event($meeting, $this->checked($status, $result));
+            }
+        } else {
+            $this->confirm_native($meeting, $event);
+            if (($event['extendedProperties']['private']['tupmeetversion'] ?? '') === $meeting->syncversion) {
+                // Recover a successful write whose response/local confirmation was lost, without resending mail.
+                $this->confirm_attendee($meeting, $event);
+                return ['syncstatus' => 'ready', 'lastsync' => time()];
+            }
+            // Preserve existing RSVP data and manually added attendees. Do not resend conferenceData/signature.
+            $payload['attendees'] = $event['attendees'] ?? [];
+            if (!is_array($payload['attendees'])) {
+                throw new \moodle_exception('calendarfailed', 'mod_tupmeet');
+            }
+            $found = false;
+            foreach ($payload['attendees'] as $attendee) {
+                if (is_string($attendee['email'] ?? null) && strcasecmp($attendee['email'], $teacher->email) === 0) {
+                    $found = true;
+                }
+            }
+            if (!$found) {
+                $payload['attendees'][] = ['email' => $teacher->email];
+            }
+            [$status, $result] = $this->request($client, 'PATCH', self::EVENTS . '/' . rawurlencode($meeting->calendareventid) .
+                '?conferenceDataVersion=1&sendUpdates=all', $payload);
+            $this->assert_event($meeting, $this->checked($status, $result));
+        }
+        $confirmed = $this->get_event($client, $meeting->calendareventid);
+        if ($confirmed === null) {
+            throw new \moodle_exception('calendarfailed', 'mod_tupmeet');
+        }
+        $this->confirm_native($meeting, $confirmed);
+        $this->confirm_attendee($meeting, $confirmed);
+        if (($confirmed['extendedProperties']['private']['tupmeetversion'] ?? '') !== $meeting->syncversion) {
+            throw new \moodle_exception('calendarfailed', 'mod_tupmeet');
+        }
+        return ['syncstatus' => 'ready', 'lastsync' => time()];
     }
 }

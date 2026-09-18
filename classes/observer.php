@@ -33,8 +33,33 @@ class observer {
         if (($event->other['modulename'] ?? '') !== 'tupmeet') {
             return;
         }
+        self::reconcile((int) $event->other['instanceid']);
+    }
+
+    /**
+     * Immediate post-commit work. Independent failures never skip another eligible reconciliation.
+     *
+     * @param int $id Activity ID
+     */
+    public static function reconcile(int $id): void {
+        global $DB;
+        $record = $DB->get_record('tupmeet', ['id' => $id]);
+        if (!$record) {
+            return;
+        }
+        if (\mod_tupmeet\local\meeting\provisioning::is_meet($record)) {
+            foreach (['space_manager', 'cohost_manager', 'meet_config_manager', 'meeting_manager'] as $manager) {
+                try {
+                    $class = '\\mod_tupmeet\\local\\meeting\\' . $manager;
+                    (new $class())->synchronize($id);
+                } catch (\Throwable $e) {
+                    // The durable task/state survives. Do not expose native OAuth or Google errors.
+                    continue;
+                }
+            }
+            return;
+        }
         try {
-            $id = (int) $event->other['instanceid'];
             if ((new \mod_tupmeet\local\meeting\meeting_manager())->synchronize($id)) {
                 (new \mod_tupmeet\local\meeting\meet_config_manager())->synchronize($id);
                 (new \mod_tupmeet\local\meeting\cohost_manager())->synchronize($id);
