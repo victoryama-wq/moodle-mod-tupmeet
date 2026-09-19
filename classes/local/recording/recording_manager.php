@@ -218,7 +218,10 @@ class recording_manager {
                     throw new recording_exception();
                 }
                 if (!$record) {
+                    // Read the current preference under the parent row lock, only on first discovery.
+                    $visible = $DB->get_field('tupmeet', 'publicationmode', ['id' => $meeting->id]) === 'automatic';
                     $record = (object) ($datarecord + ['tupmeetid' => $meeting->id, 'conferenceid' => $conference->id,
+                        'studentvisible' => (int) $visible,
                         'firstseen' => $now, 'lastseen' => $now, 'timecreated' => $now, 'timemodified' => $now]);
                     $record->id = $DB->insert_record('tupmeet_recordings', $record);
                 } else {
@@ -230,6 +233,8 @@ class recording_manager {
                     }
                     $record->lastseen = $now;
                     $record->timemodified = $now;
+                    // Discovery never writes visibility or restores an erased user's attribution.
+                    unset($record->studentvisible, $record->visibilityuserid, $record->visibilitymodified);
                     $DB->update_record('tupmeet_recordings', $record);
                 }
             }

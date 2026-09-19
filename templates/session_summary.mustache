@@ -1,0 +1,28 @@
+{{!
+    @template mod_tupmeet/session_summary
+    Academic session summary, with dates in the activity timezone.
+    Example context (json):
+    {"hassession": true, "date": "Saturday 3 October 2026", "hours": "17:00 – 18:30"}
+}}
+<section class="mod-tupmeet-session card mb-4" aria-labelledby="tupmeet-session-heading">
+    <div class="card-body">
+        <h2 id="tupmeet-session-heading" class="h4">{{#str}}nextsession, mod_tupmeet{{/str}}</h2>
+        {{#hassession}}
+            <p class="h5 mt-3">{{date}}</p>
+            <p class="mod-tupmeet-hours">{{hours}} h</p>
+            {{#enddate}}<p>{{#str}}sessionends, mod_tupmeet{{/str}} {{enddate}}</p>{{/enddate}}
+        {{/hassession}}
+        {{^hassession}}<p>{{#str}}nosession, mod_tupmeet{{/str}}</p>{{/hassession}}
+        {{#pattern}}
+            <p class="mb-1">{{pattern}}</p>
+            <p>{{#str}}sessionends, mod_tupmeet{{/str}} {{until}}</p>
+        {{/pattern}}
+        {{#joinurl}}
+            <a href="{{joinurl}}" class="btn btn-primary mt-2" target="_blank" rel="noopener noreferrer">
+                {{#str}}joinmeet, mod_tupmeet{{/str}}
+                <span class="mod-tupmeet-sr">{{#str}}opensnewtab, mod_tupmeet{{/str}}</span>
+            </a>
+        {{/joinurl}}
+        {{^joinurl}}<p class="mt-3 mb-0">{{#str}}meetingunavailable, mod_tupmeet{{/str}}</p>{{/joinurl}}
+    </div>
+</section>

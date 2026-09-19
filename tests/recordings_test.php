@@ -40,6 +40,67 @@ require_once(__DIR__ . '/../lib.php');
 #[\PHPUnit\Framework\Attributes\CoversClass(drive_metadata_service::class)]
 #[\PHPUnit\Framework\Attributes\CoversClass(rename_manager::class)]
 final class recordings_test extends \advanced_testcase {
+    /**
+     * Discovery sets visibility once, then preserves manual decisions through processing and preference edits.
+     * @param string $mode Initial publication preference
+     * @param string $state First state
+     * @dataProvider publication_cases
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('publication_cases')]
+    public function test_publication_survives_discovery(string $mode, string $state): void {
+        global $DB;
+        $DB->set_field('tupmeet', 'publicationmode', $mode, ['id' => $this->meeting->id]);
+        $this->responses = [
+            ['body' => ['conferenceRecords' => [$this->conference()]]],
+            ['body' => ['recordings' => [$this->recording('Rec_1', $state)]]],
+        ];
+        recording_manager::queue((int) $this->meeting->id);
+        $meeting = $DB->get_record('tupmeet', ['id' => $this->meeting->id]);
+        $manager = new recording_manager($this->service);
+        $this->assertTrue($manager->synchronize((int) $meeting->id, $meeting->recordingsyncversion));
+        $record = $DB->get_record('tupmeet_recordings', ['tupmeetid' => $meeting->id], '*', MUST_EXIST);
+        $this->assertEquals($mode === 'automatic' ? 1 : 0, $record->studentvisible);
+        $this->assertEquals(0, $record->visibilitymodified);
+        $this->assertEquals(0, $record->visibilityuserid);
+        $manual = $mode === 'automatic' ? 0 : 1;
+        $DB->update_record('tupmeet_recordings', (object) [
+            'id' => $record->id, 'studentvisible' => $manual, 'visibilityuserid' => 123, 'visibilitymodified' => 123456,
+        ]);
+        // Change the activity preference to disagree with the individual decision.
+        $DB->set_field('tupmeet', 'publicationmode', $manual ? 'manual' : 'automatic', ['id' => $meeting->id]);
+        $DB->update_record('tupmeet', (object) [
+            'id' => $meeting->id, 'recordingsyncstatus' => 'idle', 'recordingsnextsync' => 0,
+        ]);
+        $this->responses = [
+            ['body' => ['conferenceRecords' => [$this->conference()]]],
+            ['body' => ['recordings' => [$this->recording()]]],
+        ];
+        recording_manager::queue((int) $meeting->id);
+        $meeting = $DB->get_record('tupmeet', ['id' => $meeting->id]);
+        $this->assertTrue($manager->synchronize((int) $meeting->id, $meeting->recordingsyncversion));
+        $after = $DB->get_record('tupmeet_recordings', ['id' => $record->id]);
+        $this->assertEquals($manual, $after->studentvisible);
+        $this->assertEquals(123, $after->visibilityuserid);
+        $this->assertEquals(123456, $after->visibilitymodified);
+        $this->assertSame('FILE_GENERATED', $after->state);
+        $this->assertSame('File_Rec_1', $after->drivefileid);
+        $this->assertEquals(1, $DB->count_records('tupmeet_recordings'));
+    }
+
+    /**
+     * Every discovery entry state and preference.
+     * @return array
+     */
+    public static function publication_cases(): array {
+        $cases = [];
+        foreach (['automatic', 'manual'] as $mode) {
+            foreach (['STARTED', 'ENDED', 'FILE_GENERATED'] as $state) {
+                $cases[] = [$mode, $state];
+            }
+        }
+        return $cases;
+    }
+
     /** @var \stdClass Historical owner. */
     private \stdClass $owner;
     /** @var \stdClass Activity. */

@@ -65,6 +65,7 @@ class meeting_manager {
         try {
             $record = (object) array_intersect_key((array) $data, array_flip(self::EDITABLE));
             $record->course = $data->course ?? 0;
+            $record->publicationmode = $record->publicationmode ?? 'automatic';
             $record->timezone = schedule::timezone()->getName();
             $record->creationkey = $data->creationkey ?? self::new_key();
             if (!preg_match('/^[a-f0-9]{64}$/D', $record->creationkey)) {

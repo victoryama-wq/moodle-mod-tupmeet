@@ -1,0 +1,10 @@
+{{!
+    @template mod_tupmeet/technical_panel
+    Manager-only local diagnostics rendered by Moodle APIs.
+    Example context (json):
+    {"content": "<p>Stored technical status</p>"}
+}}
+<details class="mod-tupmeet-technical mt-4 border rounded p-3">
+    <summary>{{#str}}technicaladministration, mod_tupmeet{{/str}}</summary>
+    <div class="mt-3">{{{content}}}</div>
+</details>

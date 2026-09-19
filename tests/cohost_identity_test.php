@@ -84,8 +84,33 @@ final class cohost_identity_test extends \core_privacy\tests\provider_testcase {
         $this->assertTrue($form->elementExists('autorecord'));
         $this->assertTrue($form->elementExists('autotranscript'));
         $this->assertTrue($form->elementExists('publicationmode'));
+        $this->assertStringContainsString('value="automatic" selected', $form->getElement('publicationmode')->toHtml());
         $this->assertEquals(1, $form->getElement('autorecord')->getValue());
         $this->assertEquals(0, $form->getElement('autotranscript')->getValue());
+    }
+
+    /**
+     * New instances default to automatic, while editing the preference preserves stored visibility.
+     */
+    public function test_publication_defaults_and_edits(): void {
+        global $DB;
+        $activity = $this->activity();
+        $this->assertSame('automatic', $DB->get_field('tupmeet', 'publicationmode', ['id' => $activity->id]));
+        $conference = $DB->insert_record('tupmeet_conferences', (object) [
+            'tupmeetid' => $activity->id, 'conferencename' => 'conferenceRecords/Publication',
+        ]);
+        $id = $DB->insert_record('tupmeet_recordings', (object) [
+            'tupmeetid' => $activity->id, 'conferenceid' => $conference, 'studentvisible' => 1,
+            'recordingname' => 'conferenceRecords/Publication/recordings/First',
+        ]);
+        $before = $DB->get_record('tupmeet_recordings', ['id' => $id]);
+        $tasks = $DB->count_records('task_adhoc');
+        $this->assertTrue((new meeting_manager())->update((object) [
+            'id' => $activity->id, 'publicationmode' => 'manual',
+        ]));
+        $this->assertEquals($before, $DB->get_record('tupmeet_recordings', ['id' => $id]));
+        $this->assertEquals($tasks, $DB->count_records('task_adhoc'));
+        $this->assertSame('manual', $DB->get_field('tupmeet', 'publicationmode', ['id' => $activity->id]));
     }
 
     /**

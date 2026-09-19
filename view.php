@@ -41,23 +41,6 @@ $PAGE->set_title(format_string($tupmeet->name));
 $PAGE->set_heading(format_string($course->fullname));
 $PAGE->set_context($context);
 
-$recurrencedays = json_decode($tupmeet->recurrencedays ?? '[]', true) ?: [];
-$daylabels = [];
-$map = [
-    'mon' => get_string('monday', 'calendar'),
-    'tue' => get_string('tuesday', 'calendar'),
-    'wed' => get_string('wednesday', 'calendar'),
-    'thu' => get_string('thursday', 'calendar'),
-    'fri' => get_string('friday', 'calendar'),
-    'sat' => get_string('saturday', 'calendar'),
-    'sun' => get_string('sunday', 'calendar'),
-];
-foreach ($recurrencedays as $day) {
-    if (isset($map[$day])) {
-        $daylabels[] = $map[$day];
-    }
-}
-
 echo $OUTPUT->header();
 echo $OUTPUT->heading(format_string($tupmeet->name));
 
@@ -65,28 +48,7 @@ if (!empty($tupmeet->intro)) {
     echo $OUTPUT->box(format_module_intro('tupmeet', $tupmeet, $cm->id), 'generalbox mod_introbox');
 }
 
-$table = new html_table();
-$table->attributes['class'] = 'generaltable';
-$next = \mod_tupmeet\local\meeting\schedule::next_session($tupmeet, time());
-$table->data[] = [
-    get_string('nextsession', 'tupmeet'),
-    $next === null ? get_string('nosession', 'tupmeet') : userdate($next, '', $tupmeet->timezone),
-];
-$table->data[] = [get_string('timezone', 'tupmeet'), s($tupmeet->timezone)];
-$table->data[] = [get_string('startdatetime', 'tupmeet'), userdate($tupmeet->startdatetime, '', $tupmeet->timezone)];
-$table->data[] = [get_string('enddatetime', 'tupmeet'), userdate($tupmeet->enddatetime, '', $tupmeet->timezone)];
-$table->data[] = [get_string('isrecurring', 'tupmeet'), $tupmeet->isrecurring ? get_string('yes') : get_string('no')];
-if ($tupmeet->isrecurring) {
-    $table->data[] = [get_string('recurrencedays', 'tupmeet'), implode(', ', $daylabels)];
-    $table->data[] = [get_string('recurrenceinterval', 'tupmeet'), (int) $tupmeet->recurrenceinterval];
-    $table->data[] = [
-        get_string('recurrenceuntil', 'tupmeet'),
-        userdate($tupmeet->recurrenceuntil, get_string('strftimedatefullshort', 'langconfig'), $tupmeet->timezone),
-    ];
-}
-echo html_writer::table($table);
-echo \mod_tupmeet\output\meeting_status::render($tupmeet, $context, (int) $cm->id);
-echo \mod_tupmeet\output\recording_list::render(
+echo \mod_tupmeet\output\activity_view::render(
     $tupmeet,
     $context,
     (int) $cm->id,

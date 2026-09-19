@@ -58,11 +58,13 @@ Implemented locally on `codex/fase-3-2-cohost`, version `2026091701 / 0.4.1-alph
 
 ## Phase 4 — recordings
 
-Local implementation: **2026091900 / 0.7.0-alpha**, branch **codex/fase-4-recordings**.
+Validated base: **2026091900 / 0.7.0-alpha**, branch **codex/fase-4-recordings**.
 Meet metadata, bounded polling, immutable filenames, metadata-only Drive rename
 and teacher/admin catalog. Student publication, downloads, permission/folder changes
 and transcripts remain excluded. Restricted scope requires reconnection; remote CI
-and Phase 4 smoke remain separate pending authorization. See [Phase 4](PHASE4.md).
+passed for eb238103722d24dfdc178bbaaad1e73d3ce1a51c. The owner also confirmed
+automatic discovery/rename with cron and intact folders. See [Phase 4](PHASE4.md)
+for its original implementation report and [Phase 5](PHASE5.md) for the later smoke evidence.
 
 Priority: critical.
 
@@ -74,10 +76,12 @@ Deliverables:
 
 ## Phase 5 — automation and publication
 
-- Scheduled metadata synchronization was delivered in Phase 4; extend only for a separately approved publication design.
-- Teacher review/publication workflow.
-- Student recording list.
-- Extend publication-specific status beyond the independent metadata states from Phase 4.
+Local implementation: **2026091901 / 0.8.0-alpha**, branch **codex/fase-5-ui-publication**.
+Academic session summary and responsive recording table, initial automatic/manual
+visibility, individual eye controls, last-actor privacy and local audit events.
+Technical diagnostics are manager-only. Phase 4 synchronization/rename and all
+Google scopes/permissions remain unchanged. Remote CI and Phase 5 staging smoke
+require separate validation. See [Phase 5](PHASE5.md).
 
 ## Phase 6 — legacy migration
 

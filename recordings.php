@@ -35,5 +35,6 @@ require_capability('mod/tupmeet:view', $context);
 $accepted = \mod_tupmeet\local\recording\actions::execute($cm, $context, $action, $recordingid);
 redirect(
     new moodle_url('/mod/tupmeet/view.php', ['id' => $cm->id]),
-    get_string($accepted ? 'recordingsqueued' : 'recordingsnotqueued', 'tupmeet')
+    get_string(in_array($action, ['hide', 'show'], true) ? 'visibilitysaved' :
+        ($accepted ? 'recordingsqueued' : 'recordingsnotqueued'), 'tupmeet')
 );

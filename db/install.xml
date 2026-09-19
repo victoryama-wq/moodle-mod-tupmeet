@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/tupmeet/db" VERSION="2026091900" COMMENT="XMLDB file for mod_tupmeet"
+<XMLDB PATH="mod/tupmeet/db" VERSION="2026091901" COMMENT="XMLDB file for mod_tupmeet"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
   <TABLES>
@@ -137,6 +137,9 @@
         <FIELD NAME="renameversion" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="idle"/>
         <FIELD NAME="renamenextattempt" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="renamequeued" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="studentvisible" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="Local Moodle visibility, independent of Drive access"/>
+        <FIELD NAME="visibilitymodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="visibilityuserid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Last manual actor; zero after privacy erasure"/>
         <FIELD NAME="firstseen" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="lastseen" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
@@ -150,6 +153,8 @@
       <INDEXES>
         <INDEX NAME="recordingname" UNIQUE="true" FIELDS="recordingname"/>
         <INDEX NAME="renamedue" UNIQUE="false" FIELDS="renamestatus,renamenextattempt"/>
+        <INDEX NAME="studentlist" UNIQUE="false" FIELDS="tupmeetid,studentvisible"/>
+        <INDEX NAME="visibilityuserid" UNIQUE="false" FIELDS="visibilityuserid"/>
       </INDEXES>
     </TABLE>
   </TABLES>

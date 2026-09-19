@@ -215,5 +215,35 @@ function xmldb_tupmeet_upgrade($oldversion): bool {
         // Idle rows are backfilled in bounded scheduled batches. No HTTP, tasks or owner changes here.
         upgrade_mod_savepoint(true, 2026091900, 'tupmeet');
     }
+    if ($oldversion < 2026091901) {
+        $table = new xmldb_table('tupmeet_recordings');
+        $visibility = new xmldb_field('studentvisible', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        if (!$dbman->field_exists($table, $visibility)) {
+            $dbman->add_field($table, $visibility);
+        }
+        foreach (['visibilitymodified', 'visibilityuserid'] as $name) {
+            $field = new xmldb_field($name, XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        $indexes = ['studentlist' => ['tupmeetid', 'studentvisible'], 'visibilityuserid' => ['visibilityuserid']];
+        foreach ($indexes as $name => $fields) {
+            $index = new xmldb_index($name, XMLDB_INDEX_NOTUNIQUE, $fields);
+            if (!$dbman->index_exists($table, $index)) {
+                $dbman->add_index($table, $index);
+            }
+        }
+        // Repeat safely if schema creation was interrupted before the savepoint.
+        // Moodle runs upgrades in maintenance mode; no manual visibility actions exist yet.
+        $DB->set_field('tupmeet_recordings', 'studentvisible', 0);
+        $DB->execute(
+            "UPDATE {tupmeet_recordings} SET studentvisible = 1
+               WHERE tupmeetid IN (SELECT id FROM {tupmeet} WHERE publicationmode = :mode)",
+            ['mode' => 'automatic']
+        );
+        // No Google access, new tasks or change to existing activity preferences.
+        upgrade_mod_savepoint(true, 2026091901, 'tupmeet');
+    }
     return true;
 }

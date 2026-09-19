@@ -17,10 +17,9 @@
 namespace mod_tupmeet\output;
 
 use mod_tupmeet\local\google\recording_service;
-use mod_tupmeet\local\recording\recording_manager;
 
 /**
- * Capability-gated metadata catalog. No recording information or link reaches students.
+ * Server-filtered academic catalog; contexts contain only display values.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
@@ -28,107 +27,83 @@ use mod_tupmeet\local\recording\recording_manager;
  */
 class recording_list {
     /**
-     * A protected POST form, with Moodle's session key.
-     * @param int $cmid Module ID
-     * @param string $action Action
-     * @param int $recordingid Local recording ID
-     * @return string
-     */
-    private static function button(int $cmid, string $action, int $recordingid = 0): string {
-        global $OUTPUT;
-        $url = new \moodle_url('/mod/tupmeet/recordings.php', [
-            'id' => $cmid, 'action' => $action, 'recordingid' => $recordingid,
-        ]);
-        $label = get_string($action === 'sync' ? 'recordingssync' : 'recordingsretry', 'tupmeet');
-        return $OUTPUT->single_button($url, $label, 'post');
-    }
-
-    /**
-     * Render bounded, paginated local metadata without any HTTP.
+     * Query permitted rows before constructing HTML.
      * @param \stdClass $meeting Activity
      * @param \context_module $context Module context
      * @param int $cmid Module ID
      * @param int $page Zero-based page
-     * @return string HTML
+     * @return array Safe template data
      */
-    public static function render(\stdClass $meeting, \context_module $context, int $cmid, int $page = 0): string {
+    public static function data(\stdClass $meeting, \context_module $context, int $cmid, int $page = 0): array {
         global $DB, $OUTPUT;
-        if (!has_capability('moodle/course:manageactivities', $context)) {
-            return '';
+        require_capability('mod/tupmeet:view', $context);
+        $manage = has_capability('moodle/course:manageactivities', $context);
+        $params = ['id' => $meeting->id];
+        $where = 'r.tupmeetid = :id' . ($manage ? '' : ' AND r.studentvisible = 1');
+        $total = $DB->count_records_sql('SELECT COUNT(1) FROM {tupmeet_recordings} r WHERE ' . $where, $params);
+        $page = max(0, min($page, (int) floor(max(0, $total - 1) / 50)));
+        $fields = 'r.id, r.state, r.drivefileid, r.exporturi, r.partnumber, c.starttime AS conferencestart';
+        if ($manage) {
+            $fields .= ', r.studentvisible, r.drivefilename, r.desiredfilename';
         }
-        $html = $OUTPUT->heading(get_string('recordings', 'tupmeet'), 3);
-        $status = in_array($meeting->recordingsyncstatus, ['idle', 'pending', 'syncing', 'ready', 'error'], true) ?
-            $meeting->recordingsyncstatus : 'error';
-        $html .= \html_writer::div(get_string('recordingssync' . $status, 'tupmeet'));
-        if ($meeting->recordingslastsync) {
-            $html .= \html_writer::div(get_string('recordingslastsync', 'tupmeet') . ': ' .
-                userdate($meeting->recordingslastsync, '', $meeting->timezone));
-        }
-        if ($status === 'error') {
-            $html .= $OUTPUT->notification(get_string('recordingssyncerrorhelp', 'tupmeet') .
-                ($meeting->recordingshttpstatus ? ' HTTP ' . (int) $meeting->recordingshttpstatus : ''), 'warning');
-        }
-        if (recording_manager::eligible($meeting)) {
-            $html .= self::button($cmid, 'sync');
-        }
-        if ($meeting->provisionmode === 'calendar') {
-            $html .= \html_writer::div(get_string('recordingshistorical', 'tupmeet'));
-        }
-        $total = $DB->count_records('tupmeet_recordings', ['tupmeetid' => $meeting->id]);
-        if (!$total) {
-            return $html . \html_writer::div(get_string('recordingsnone', 'tupmeet'));
-        }
-        $page = max(0, min($page, (int) floor(($total - 1) / 50)));
         $records = $DB->get_records_sql(
-            'SELECT r.*, c.starttime AS conferencestart FROM {tupmeet_recordings} r
+            'SELECT ' . $fields . ' FROM {tupmeet_recordings} r
                JOIN {tupmeet_conferences} c ON c.id = r.conferenceid
-              WHERE r.tupmeetid = :id ORDER BY c.starttime DESC, r.starttime, r.startnanos, r.recordingname',
-            ['id' => $meeting->id],
+              WHERE ' . $where . ' ORDER BY c.starttime DESC, r.starttime, r.startnanos, r.recordingname',
+            $params,
             $page * 50,
             50
         );
-        $table = new \html_table();
-        $table->head = array_map(
-            static fn($key) => get_string($key, 'tupmeet'),
-            ['recordingssession', 'recordingsstate', 'recordingsfile', 'recordingsrename']
-        );
+        $rows = [];
         foreach ($records as $record) {
             $state = in_array($record->state, ['STARTED', 'ENDED', 'FILE_GENERATED'], true) ? $record->state : 'ENDED';
-            $file = s($record->drivefilename ?? $record->desiredfilename ?? '');
-            if ($record->originalfilename !== null) {
-                $file .= \html_writer::div(get_string('recordingsoriginal', 'tupmeet') . ': ' . s($record->originalfilename));
+            $row = [
+                'date' => userdate($record->conferencestart, get_string('recordingdateformat', 'tupmeet'), $meeting->timezone),
+                'hours' => userdate($record->conferencestart, '%H:%M', $meeting->timezone),
+                'state' => get_string('recordingsstate' . $state, 'tupmeet'),
+                'part' => $record->partnumber > 1 ? get_string('recordingpart', 'tupmeet', $record->partnumber) : '',
+            ];
+            if ($state === 'FILE_GENERATED' && recording_service::valid_export($record->exporturi, $record->drivefileid ?? '')) {
+                $row['url'] = $record->exporturi;
             }
-            if (
-                $record->state === 'FILE_GENERATED' &&
-                recording_service::valid_export($record->exporturi, $record->drivefileid ?? '')
-            ) {
-                $file .= \html_writer::div(\html_writer::link(
-                    $record->exporturi,
-                    get_string('recordingsopen', 'tupmeet'),
-                    ['target' => '_blank', 'rel' => 'noopener noreferrer']
-                ));
+            if ($manage) {
+                $visible = (bool) $record->studentvisible;
+                $row += [
+                    'recordingid' => (int) $record->id,
+                    'filename' => $record->drivefilename ?? $record->desiredfilename ?? '',
+                    'action' => $visible ? 'hide' : 'show',
+                    'visibilitylabel' => get_string($visible ? 'recordinghide' : 'recordingshow', 'tupmeet'),
+                    'visibilitystate' => get_string($visible ? 'recordingvisible' : 'recordinghidden', 'tupmeet'),
+                    'visibilityicon' => $OUTPUT->pix_icon($visible ? 't/hide' : 't/show', '', 'moodle'),
+                ];
             }
-            $rename = in_array($record->renamestatus, ['unavailable', 'pending', 'ready', 'error', 'skipped'], true) ?
-                $record->renamestatus : 'error';
-            $renametext = get_string('recordingsrename' . $rename, 'tupmeet');
-            if ($record->renamehttpstatus) {
-                $renametext .= ' HTTP ' . (int) $record->renamehttpstatus;
-            }
-            if (
-                in_array($rename, ['error', 'skipped'], true) && $record->desiredfilename &&
-                $meeting->provisionmode === 'meet'
-            ) {
-                $renametext .= self::button($cmid, 'rename', (int) $record->id);
-            }
-            $table->data[] = [userdate($record->conferencestart, '', $meeting->timezone),
-                get_string('recordingsstate' . $state, 'tupmeet'), $file, $renametext];
+            $rows[] = $row;
         }
-        return $html . \html_writer::table($table) . $OUTPUT->paging_bar(
-            $total,
-            $page,
-            50,
-            new \moodle_url('/mod/tupmeet/view.php', ['id' => $cmid]),
-            'recordingpage'
-        );
+        $data = ['rows' => $rows, 'hasrows' => !empty($rows), 'manage' => $manage,
+            'paging' => $OUTPUT->paging_bar(
+                $total,
+                $page,
+                50,
+                new \moodle_url('/mod/tupmeet/view.php', ['id' => $cmid]),
+                'recordingpage'
+            )];
+        if ($manage) {
+            $data += ['actionurl' => (new \moodle_url('/mod/tupmeet/recordings.php'))->out(false),
+                'cmid' => $cmid, 'sesskey' => sesskey()];
+        }
+        return $data;
+    }
+
+    /**
+     * Render local academic data.
+     * @param \stdClass $meeting Activity
+     * @param \context_module $context Module context
+     * @param int $cmid Module ID
+     * @param int $page Zero-based page
+     * @return string
+     */
+    public static function render(\stdClass $meeting, \context_module $context, int $cmid, int $page = 0): string {
+        global $OUTPUT;
+        return $OUTPUT->render_from_template('mod_tupmeet/recordings_table', self::data($meeting, $context, $cmid, $page));
     }
 }

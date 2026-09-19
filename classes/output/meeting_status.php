@@ -29,14 +29,26 @@ use mod_tupmeet\local\meeting\provisioning;
  */
 class meeting_status {
     /**
+     * Student-safe joining state, also used by the academic session card.
+     * @param \stdClass $meeting Local activity
+     * @return string|null Validated Meet URL
+     */
+    public static function join_url(\stdClass $meeting): ?string {
+        $ready = provisioning::is_meet($meeting) ? ($meeting->spacestatus ?? '') === 'ready' :
+            $meeting->syncstatus === 'ready';
+        return $ready && calendar_service::valid_meet_uri($meeting->meeturi ?? '') ? $meeting->meeturi : null;
+    }
+
+    /**
      * Render stored state only; viewing never contacts Google or queues work.
      *
      * @param \stdClass $meeting Activity
      * @param \context_module $context Capability context
      * @param int $cmid Course module ID
+     * @param bool $includejoin Include the join action when rendering standalone
      * @return string HTML
      */
-    public static function render(\stdClass $meeting, \context_module $context, int $cmid): string {
+    public static function render(\stdClass $meeting, \context_module $context, int $cmid, bool $includejoin = true): string {
         global $OUTPUT, $DB;
         $manage = has_capability('moodle/course:manageactivities', $context);
         $meetfirst = provisioning::is_meet($meeting);
@@ -44,17 +56,20 @@ class meeting_status {
             calendar_service::valid_meet_uri($meeting->meeturi ?? '');
         $retryurl = new \moodle_url('/mod/tupmeet/retry.php', ['id' => $cmid]);
         $html = '';
-        if ($ready) {
+        if (!$manage && !$ready) {
+            return $OUTPUT->notification(get_string('meetingunavailable', 'tupmeet'), 'info');
+        }
+        if ($ready && $includejoin) {
             $html .= \html_writer::link(new \moodle_url($meeting->meeturi), get_string('joinmeet', 'tupmeet'), [
                 'class' => 'btn btn-primary', 'target' => '_blank', 'rel' => 'noopener noreferrer',
             ]);
-        } else if (!$meetfirst) {
+        } else if (!$ready && !$meetfirst) {
             $status = in_array($meeting->syncstatus, ['pending', 'error', 'legacy'], true) ? $meeting->syncstatus : 'error';
             $html .= $OUTPUT->notification(get_string('sync' . $status, 'tupmeet'), $status === 'error' ? 'warning' : 'info');
             if ($manage && $status !== 'legacy') {
                 $html .= $OUTPUT->single_button($retryurl, get_string('retrysync', 'tupmeet'), 'post');
             }
-        } else {
+        } else if (!$ready) {
             $html .= $OUTPUT->notification(get_string('meetingunavailable', 'tupmeet'), 'info');
         }
         if (!$manage) {

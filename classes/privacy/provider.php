@@ -72,6 +72,9 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'lastseen' => 'privacy:metadata:recordingtimes',
         ], 'privacy:metadata:conferences');
         $collection->add_database_table('tupmeet_recordings', [
+            'studentvisible' => 'privacy:metadata:studentvisible',
+            'visibilitymodified' => 'privacy:metadata:visibilitymodified',
+            'visibilityuserid' => 'privacy:metadata:visibilityuserid',
             'recordingname' => 'privacy:metadata:recordingname',
             'starttime' => 'privacy:metadata:recordingtimes',
             'endtime' => 'privacy:metadata:recordingtimes',
@@ -107,8 +110,10 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'SELECT ctx.id FROM {context} ctx
                JOIN {course_modules} cm ON cm.id = ctx.instanceid AND ctx.contextlevel = :level
                JOIN {modules} m ON m.id = cm.module AND m.name = :module
-               JOIN {tupmeet} t ON t.id = cm.instance WHERE t.cohostuserid = :userid',
-            ['level' => CONTEXT_MODULE, 'module' => 'tupmeet', 'userid' => $userid]
+               JOIN {tupmeet} t ON t.id = cm.instance
+              WHERE t.cohostuserid = :userid OR EXISTS (
+                    SELECT 1 FROM {tupmeet_recordings} r WHERE r.tupmeetid = t.id AND r.visibilityuserid = :actor)',
+            ['level' => CONTEXT_MODULE, 'module' => 'tupmeet', 'userid' => $userid, 'actor' => $userid]
         );
         return $contexts;
     }
@@ -138,6 +143,13 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         if (!empty($record->cohostuserid)) {
             $userlist->add_user((int) $record->cohostuserid);
         }
+        if ($record) {
+            $userlist->add_from_sql(
+                'visibilityuserid',
+                'SELECT visibilityuserid FROM {tupmeet_recordings} WHERE tupmeetid = :id AND visibilityuserid > 0',
+                ['id' => $record->id]
+            );
+        }
     }
 
     /**
@@ -146,8 +158,20 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      * @param \core_privacy\local\request\approved_contextlist $contextlist Approved contexts
      */
     public static function export_user_data(\core_privacy\local\request\approved_contextlist $contextlist) {
+        global $DB;
         foreach ($contextlist->get_contexts() as $context) {
             $record = self::activity($context);
+            if ($record) {
+                $rows = $DB->get_records('tupmeet_recordings', [
+                    'tupmeetid' => $record->id, 'visibilityuserid' => $contextlist->get_user()->id,
+                ], 'id', 'id,studentvisible,visibilitymodified,visibilityuserid');
+                if ($rows) {
+                    \core_privacy\local\request\writer::with_context($context)->export_data(
+                        [get_string('visibilityhistory', 'tupmeet')],
+                        (object) ['recordings' => array_values($rows)]
+                    );
+                }
+            }
             if ($record && (int) $record->cohostuserid === (int) $contextlist->get_user()->id) {
                 $data = (object) array_intersect_key((array) $record, array_flip([
                     'cohostuserid', 'cohostemail', 'cohostmembername', 'cohoststatus', 'cohostmodified',
@@ -186,6 +210,9 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      */
     public static function delete_data_for_all_users_in_context(\context $context) {
         $record = self::activity($context);
+        if ($record) {
+            self::erase_visibility($record);
+        }
         if ($record && $record->cohostuserid) {
             self::erase($record);
         }
@@ -199,6 +226,9 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
     public static function delete_data_for_user(\core_privacy\local\request\approved_contextlist $contextlist) {
         foreach ($contextlist->get_contexts() as $context) {
             $record = self::activity($context);
+            if ($record) {
+                self::erase_visibility($record, [(int) $contextlist->get_user()->id]);
+            }
             if ($record && (int) $record->cohostuserid === (int) $contextlist->get_user()->id) {
                 self::erase($record);
             }
@@ -212,8 +242,40 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
      */
     public static function delete_data_for_users(\core_privacy\local\request\approved_userlist $userlist) {
         $record = self::activity($userlist->get_context());
+        if ($record) {
+            self::erase_visibility($record, $userlist->get_userids());
+        }
         if ($record && in_array((int) $record->cohostuserid, $userlist->get_userids())) {
             self::erase($record);
+        }
+    }
+
+    /**
+     * Anonymize local authorship without publishing, hiding or changing Google resources.
+     * @param \stdClass $record Approved activity
+     * @param array|null $userids Approved actors, or all actors in this context
+     */
+    private static function erase_visibility(\stdClass $record, ?array $userids = null): void {
+        global $DB;
+        $where = 'tupmeetid = :activity';
+        $params = ['activity' => $record->id];
+        if ($userids !== null) {
+            if (!$userids) {
+                return;
+            }
+            [$sql, $users] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
+            $where .= ' AND visibilityuserid ' . $sql;
+            $params += $users;
+        }
+        // Serialize with the existing rename queue's read/update snapshot as well as manual visibility.
+        $lock = \core\lock\lock_config::get_lock_factory('mod_tupmeet')->get_lock('meeting:' . $record->id, 10);
+        if (!$lock) {
+            throw new \moodle_exception('visibilitybusy', 'mod_tupmeet');
+        }
+        try {
+            $DB->execute('UPDATE {tupmeet_recordings} SET visibilityuserid = 0, visibilitymodified = 0 WHERE ' . $where, $params);
+        } finally {
+            $lock->release();
         }
     }
 }

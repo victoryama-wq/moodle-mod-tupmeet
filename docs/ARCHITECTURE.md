@@ -163,4 +163,12 @@ Meet-first Calendar uses native conference data, the validated teacher attendee 
 
 ## Phase 4 recording metadata boundary
 
-Permanent Space -> Meet conferenceRecords -> recordings -> local normalized metadata -> Drive file ID. Independent discovery and rename revisions use historical owners, per-activity locks and bounded adhoc retries. Scheduled dispatch selects at most 25 due activities every five minutes; HTTP stays outside transactions. No Calendar/folder search, media, permission changes or external deletion. The manager-only catalog reads local data. Restricted drive.metadata is requested only for registered Google issuers. Details, schema and pending smoke: [Phase 4](PHASE4.md).
+Permanent Space -> Meet conferenceRecords -> recordings -> local normalized metadata -> Drive file ID. Independent discovery and rename revisions use historical owners, per-activity locks and bounded adhoc retries. Scheduled dispatch selects at most 25 due activities every five minutes; HTTP stays outside transactions. No Calendar/folder search, media, permission changes or external deletion. Restricted drive.metadata is requested only for registered Google issuers. Details and schema: [Phase 4](PHASE4.md). The owner subsequently confirmed its real automatic-discovery/rename smoke.
+
+## Phase 5 academic visibility boundary
+
+The academic catalog queries only studentvisible=1 for non-managers, including its count/pagination. Templates receive explicit display projections, never complete database rows. A capability-gated native details panel retains technical diagnostics and POST retries. Session presentation reuses schedule arithmetic and the saved local recurrence end date.
+
+publicationmode initializes new recordings once; normal new activities default to automatic. The upgrade initializes existing recording visibility from each unchanged activity preference. Individual hide/show actions are local POST + sesskey + manageactivities operations, sharing the activity lock with discovery. They update only visibility and last-actor metadata and emit an event containing local IDs only. Privacy exports and anonymizes attribution without changing visibility or shared institutional files.
+
+This is Moodle link visibility, not a Drive ACL. Existing institutional readers may access a previously obtained/shared URL. No scopes, Google services, polling or rename algorithm change. See [Phase 5](PHASE5.md).

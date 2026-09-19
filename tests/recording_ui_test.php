@@ -17,7 +17,7 @@
 namespace mod_tupmeet;
 
 use mod_tupmeet\local\recording\actions;
-use mod_tupmeet\output\recording_list;
+use mod_tupmeet\output\recording_diagnostics as recording_list;
 
 defined('MOODLE_INTERNAL') || die();
 

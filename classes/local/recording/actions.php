@@ -28,7 +28,7 @@ class actions {
      * Queue only the requested subsystem; never accept a remote ID or filename.
      * @param \stdClass $cm Course module already resolved by Moodle
      * @param \context_module $context Module context
-     * @param string $action sync or rename
+     * @param string $action sync, rename, hide or show
      * @param int $recordingid Local recording ID
      * @return bool Accepted or throttled
      */
@@ -39,6 +39,9 @@ class actions {
             throw new \moodle_exception('invalidrequest');
         }
         require_sesskey();
+        if (in_array($action, ['hide', 'show'], true)) {
+            return self::visibility($cm, $context, $recordingid, $action === 'show');
+        }
         if ($action === 'sync') {
             return recording_manager::queue((int) $cm->instance, true);
         }
@@ -47,5 +50,45 @@ class actions {
             return rename_manager::queue($recordingid, true);
         }
         throw new \moodle_exception('invalidrequest');
+    }
+
+    /**
+     * Persist only local visibility under the same activity lock as discovery.
+     * Explicit show/hide is idempotent, so a repeated POST cannot accidentally toggle twice.
+     * @param \stdClass $cm Verified module
+     * @param \context_module $context Verified context
+     * @param int $id Local recording
+     * @param bool $visible Requested action, resolved by the server
+     * @return bool
+     */
+    private static function visibility(\stdClass $cm, \context_module $context, int $id, bool $visible): bool {
+        global $DB, $USER;
+        $lock = \core\lock\lock_config::get_lock_factory('mod_tupmeet')->get_lock('meeting:' . $cm->instance, 0);
+        if (!$lock) {
+            throw new \moodle_exception('visibilitybusy', 'mod_tupmeet');
+        }
+        try {
+            $transaction = $DB->start_delegated_transaction();
+            $record = $DB->get_record('tupmeet_recordings', ['id' => $id, 'tupmeetid' => $cm->instance], '*', MUST_EXIST);
+            if ((bool) $record->studentvisible !== $visible) {
+                $DB->update_record('tupmeet_recordings', (object) [
+                    'id' => $id, 'studentvisible' => (int) $visible,
+                    'visibilitymodified' => time(), 'visibilityuserid' => $USER->id,
+                ]);
+                \mod_tupmeet\event\recording_visibility_changed::create([
+                    'context' => $context, 'objectid' => $id,
+                    'other' => ['visible' => (int) $visible, 'activityid' => (int) $cm->instance],
+                ])->trigger();
+            }
+            $transaction->allow_commit();
+            return true;
+        } catch (\Throwable $e) {
+            if (isset($transaction)) {
+                $transaction->rollback($e);
+            }
+            throw $e;
+        } finally {
+            $lock->release();
+        }
     }
 }

@@ -112,7 +112,8 @@ class mod_tupmeet_mod_form extends moodleform_mod {
             'automatic' => get_string('publicationautomatic', 'tupmeet'),
         ];
         $mform->addElement('select', 'publicationmode', get_string('publicationmode', 'tupmeet'), $publicationoptions);
-        $mform->setDefault('publicationmode', 'manual');
+        $mform->setDefault('publicationmode', 'automatic');
+        $mform->addHelpButton('publicationmode', 'publicationmode', 'tupmeet');
 
         $this->standard_coursemodule_elements();
         $this->add_action_buttons();
