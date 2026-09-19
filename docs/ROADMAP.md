@@ -58,6 +58,12 @@ Implemented locally on `codex/fase-3-2-cohost`, version `2026091701 / 0.4.1-alph
 
 ## Phase 4 — recordings
 
+Local implementation: **2026091900 / 0.7.0-alpha**, branch **codex/fase-4-recordings**.
+Meet metadata, bounded polling, immutable filenames, metadata-only Drive rename
+and teacher/admin catalog. Student publication, downloads, permission/folder changes
+and transcripts remain excluded. Restricted scope requires reconnection; remote CI
+and Phase 4 smoke remain separate pending authorization. See [Phase 4](PHASE4.md).
+
 Priority: critical.
 
 Deliverables:
@@ -68,10 +74,10 @@ Deliverables:
 
 ## Phase 5 — automation and publication
 
-- Scheduled sync task.
+- Scheduled metadata synchronization was delivered in Phase 4; extend only for a separately approved publication design.
 - Teacher review/publication workflow.
 - Student recording list.
-- Sync status/logging.
+- Extend publication-specific status beyond the independent metadata states from Phase 4.
 
 ## Phase 6 — legacy migration
 

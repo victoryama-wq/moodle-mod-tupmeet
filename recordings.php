@@ -15,17 +15,25 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Version information for TUP Meet.
+ * Protected metadata-only actions. No synchronous Google operations in web requests.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+require('../../config.php');
 
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091900;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.7.0-alpha';
+$id = required_param('id', PARAM_INT);
+$action = required_param('action', PARAM_ALPHA);
+$recordingid = optional_param('recordingid', 0, PARAM_INT);
+$cm = get_coursemodule_from_id('tupmeet', $id, 0, false, MUST_EXIST);
+$course = get_course($cm->course);
+require_login($course, true, $cm);
+$context = context_module::instance($cm->id);
+require_capability('mod/tupmeet:view', $context);
+$accepted = \mod_tupmeet\local\recording\actions::execute($cm, $context, $action, $recordingid);
+redirect(
+    new moodle_url('/mod/tupmeet/view.php', ['id' => $cm->id]),
+    get_string($accepted ? 'recordingsqueued' : 'recordingsnotqueued', 'tupmeet')
+);

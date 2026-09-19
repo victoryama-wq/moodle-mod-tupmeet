@@ -141,5 +141,79 @@ function xmldb_tupmeet_upgrade($oldversion): bool {
         $DB->set_field('tupmeet', 'provisionmode', 'legacy', ['syncstatus' => 'legacy']);
         upgrade_mod_savepoint(true, 2026091801, 'tupmeet');
     }
+    if ($oldversion < 2026091900) {
+        $table = new xmldb_table('tupmeet');
+        $fields = [
+            new xmldb_field('recordingsyncstatus', XMLDB_TYPE_CHAR, '12', null, XMLDB_NOTNULL, null, 'idle'),
+            new xmldb_field('recordingslastsync', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0'),
+            new xmldb_field('recordingsnextsync', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0'),
+            new xmldb_field('recordingsyncattempts', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0'),
+            new xmldb_field('recordingsyncversion', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, 'idle'),
+            new xmldb_field('recordingshttpstatus', XMLDB_TYPE_INTEGER, '3', null, XMLDB_NOTNULL, null, '0'),
+            new xmldb_field('recordingsyncqueued', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0'),
+            new xmldb_field('recordingscheckedversion', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, 'idle'),
+        ];
+        foreach ($fields as $field) {
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        $index = new xmldb_index('recordingsdue', XMLDB_INDEX_NOTUNIQUE, ['recordingsyncstatus', 'recordingsnextsync']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        $table = new xmldb_table('tupmeet_conferences');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('tupmeetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('conferencename', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('starttime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('endtime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('firstseen', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('lastseen', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('tupmeetid', XMLDB_KEY_FOREIGN, ['tupmeetid'], 'tupmeet', ['id']);
+        $table->add_index('conferencename', XMLDB_INDEX_UNIQUE, ['conferencename']);
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+        $table = new xmldb_table('tupmeet_recordings');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('tupmeetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('conferenceid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('recordingname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('state', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'STARTED');
+        $table->add_field('starttime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('startnanos', XMLDB_TYPE_INTEGER, '9', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('endtime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('drivefileid', XMLDB_TYPE_CHAR, '200', null, null, null, null);
+        $table->add_field('exporturi', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('desiredfilename', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('drivefilename', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('originalfilename', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('partnumber', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('renamestatus', XMLDB_TYPE_CHAR, '12', null, XMLDB_NOTNULL, null, 'unavailable');
+        $table->add_field('renameattempts', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('renamehttpstatus', XMLDB_TYPE_INTEGER, '3', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('renamedat', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('renameversion', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, 'idle');
+        $table->add_field('renamenextattempt', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('renamequeued', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('firstseen', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('lastseen', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('tupmeetid', XMLDB_KEY_FOREIGN, ['tupmeetid'], 'tupmeet', ['id']);
+        $table->add_key('conferenceid', XMLDB_KEY_FOREIGN, ['conferenceid'], 'tupmeet_conferences', ['id']);
+        $table->add_index('recordingname', XMLDB_INDEX_UNIQUE, ['recordingname']);
+        $table->add_index('renamedue', XMLDB_INDEX_NOTUNIQUE, ['renamestatus', 'renamenextattempt']);
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+        // Idle rows are backfilled in bounded scheduled batches. No HTTP, tasks or owner changes here.
+        upgrade_mod_savepoint(true, 2026091900, 'tupmeet');
+    }
     return true;
 }

@@ -160,3 +160,7 @@ Version `2026091701` adds eight fields without activating historical selections.
 There is no documented idempotency key for spaces.create. The approved exception to the original blanket idempotency invariant is conservative at-most-one attempted creation until a definitive rejection: timeouts/ambiguous results and interrupted creating workers become uncertain and require manual review. Only complete HTTP 429 responses automatically retry with backoff; normal creation has no fixed pacing. This cannot guarantee recovery of an unknown remote Space after losing its response.
 
 Meet-first Calendar uses native conference data, the validated teacher attendee and sendUpdates=all, and confirms the event via GET. Historical Calendar-created Spaces never receive automatic COHOST writes. Canonical Space and URI survive every child error. No destructive Google operations, ownership migration or Phase 4 are introduced.
+
+## Phase 4 recording metadata boundary
+
+Permanent Space -> Meet conferenceRecords -> recordings -> local normalized metadata -> Drive file ID. Independent discovery and rename revisions use historical owners, per-activity locks and bounded adhoc retries. Scheduled dispatch selects at most 25 due activities every five minutes; HTTP stays outside transactions. No Calendar/folder search, media, permission changes or external deletion. The manager-only catalog reads local data. Restricted drive.metadata is requested only for registered Google issuers. Details, schema and pending smoke: [Phase 4](PHASE4.md).

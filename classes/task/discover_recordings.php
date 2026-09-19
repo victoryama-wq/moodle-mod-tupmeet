@@ -14,18 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace mod_tupmeet\task;
+
 /**
- * Version information for TUP Meet.
+ * Bounded metadata discovery dispatcher; HTTP belongs exclusively to adhoc workers.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class discover_recordings extends \core\task\scheduled_task {
+    /**
+     * Human-readable task name.
+     * @return string
+     */
+    public function get_name(): string {
+        return get_string('taskdiscoverrecordings', 'tupmeet');
+    }
 
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091900;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.7.0-alpha';
+    /**
+     * Queue due activities without contacting Google.
+     */
+    public function execute(): void {
+        \mod_tupmeet\local\recording\recording_manager::dispatch();
+    }
+}

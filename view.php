@@ -86,4 +86,10 @@ if ($tupmeet->isrecurring) {
 }
 echo html_writer::table($table);
 echo \mod_tupmeet\output\meeting_status::render($tupmeet, $context, (int) $cm->id);
+echo \mod_tupmeet\output\recording_list::render(
+    $tupmeet,
+    $context,
+    (int) $cm->id,
+    optional_param('recordingpage', 0, PARAM_INT)
+);
 echo $OUTPUT->footer();

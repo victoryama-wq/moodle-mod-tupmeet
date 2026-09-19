@@ -671,11 +671,16 @@ final class cohost_test extends \advanced_testcase {
         $owner = $this->accounts->get_account($this->owner);
         $issuer = new \core\oauth2\issuer($owner->issuerid);
         $expected = [local\google\calendar_service::SCOPE, local\google\meet_service::SCOPE,
-            member_service::SCOPE, member_service::READONLY_SCOPE];
+            member_service::SCOPE, member_service::READONLY_SCOPE, local\google\drive_metadata_service::SCOPE];
         $this->assertSame($expected, explode(' ', tupmeet_oauth2_system_scopes($issuer)));
+        $this->assertContains(local\google\drive_metadata_service::SCOPE, $expected);
         $this->accounts->set_enabled($this->owner, false);
         $this->assertStringContainsString(member_service::READONLY_SCOPE, \core\oauth2\api::get_system_scopes_for_issuer($issuer));
         $other = testing\issuer::create();
+        $this->assertStringNotContainsString(
+            local\google\drive_metadata_service::SCOPE,
+            \core\oauth2\api::get_system_scopes_for_issuer($other)
+        );
         $this->assertStringNotContainsString(
             member_service::READONLY_SCOPE,
             \core\oauth2\api::get_system_scopes_for_issuer($other)

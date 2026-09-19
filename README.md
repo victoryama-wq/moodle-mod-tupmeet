@@ -2,7 +2,13 @@
 
 TUP Meet is an institutional Moodle activity module intended to create and manage Google Meet sessions from Moodle while maintaining institutional control of the organizer account and recording history.
 
-## Phase 3.4 — Meet-first for new activities
+## Phase 4 — recording metadata and automatic filenames
+
+Version **2026091900 / 0.7.0-alpha** discovers conferences and recordings through the permanent Meet Space, retains local history and renames only MP4 metadata in Drive. Teachers/managers see a capability-protected catalog; students receive no recording links. See [Phase 4](docs/PHASE4.md) for the schema, polling, retries, scope restrictions and pending staging smoke.
+
+**Manual setup:** enable Google Drive API and reconnect each applicable historical Moodle OAuth system account with the restricted drive.metadata scope. No media download, permission changes, folder changes, transcript retrieval or student publication is implemented.
+
+## Preserved Phase 3.4 — Meet-first for new activities
 
 Version `2026091802` (`0.6.1-alpha`) retains the Meet-first workflow and expresses recurrence `UNTIL` at the start time on the final local date. See [Phase 3.4.1](docs/PHASE3_4_1.md) for this limited hardening and the approved Meet-first smoke, and [Phase 3.4](docs/PHASE3_4.md) for the workflow, upgrade and independent states.
 
@@ -17,9 +23,9 @@ Version `2026091802` (`0.6.1-alpha`) retains the Meet-first workflow and express
 
 The isolated [PoC](docs/PHASE3_3_POC.md) remains staging-only for comparison and must be removed or disabled before a production release. Its cache is never used by normal activities.
 
-**Phase 4, recording/transcript retrieval, Drive API, MP4 downloads, publication and legacy migration are not implemented.** Publication remains a preference. Artifact creation depends on Workspace licensing/policies and a privileged participant joining; configuration readiness is not evidence that a recording exists.
+Phase 4 adds recording metadata discovery and Drive filename updates only. Publication remains a preference. Artifact creation depends on Workspace licensing/policies and a privileged participant joining; configuration readiness is not evidence that a recording exists.
 
-Historical design/evidence: [Phase 1](docs/PHASE1.md), [Phase 2](docs/PHASE2.md), [Phase 2 smoke](docs/PHASE2_SMOKE.md), [Phase 3](docs/PHASE3.md), [Phase 3.2](docs/PHASE3_2.md), [Phase 3.2.1](docs/PHASE3_2_1.md). Current behavior is described by Phase 3.4. [Continuous integration](docs/CI.md) retains QUALITY and Moodle 4.5/5.0/5.1 PHPUnit jobs; local tests do not imply remote validation.
+Historical design/evidence: [Phase 1](docs/PHASE1.md), [Phase 2](docs/PHASE2.md), [Phase 2 smoke](docs/PHASE2_SMOKE.md), [Phase 3](docs/PHASE3.md), [Phase 3.2](docs/PHASE3_2.md), [Phase 3.2.1](docs/PHASE3_2_1.md). Current behavior combines Phase 3.4 and Phase 4. [Continuous integration](docs/CI.md) retains QUALITY and Moodle 4.5/5.0/5.1 PHPUnit jobs; local tests do not imply remote validation.
 
 ## Master-account principle
 

@@ -103,8 +103,20 @@ function tupmeet_delete_instance($id) {
         return false;
     }
 
-    $DB->delete_records('tupmeet', ['id' => $id]);
-    return true;
+    $lock = \core\lock\lock_config::get_lock_factory('mod_tupmeet')->get_lock('meeting:' . $id, 0);
+    if (!$lock) {
+        throw new moodle_exception('recordingsbusy', 'mod_tupmeet');
+    }
+    try {
+        $transaction = $DB->start_delegated_transaction();
+        $DB->delete_records('tupmeet_recordings', ['tupmeetid' => $id]);
+        $DB->delete_records('tupmeet_conferences', ['tupmeetid' => $id]);
+        $DB->delete_records('tupmeet', ['id' => $id]);
+        $transaction->allow_commit();
+        return true;
+    } finally {
+        $lock->release();
+    }
 }
 
 /**
@@ -168,5 +180,6 @@ function tupmeet_oauth2_system_scopes(\core\oauth2\issuer $issuer): string {
     }
     return \mod_tupmeet\local\google\calendar_service::SCOPE . ' ' .
         \mod_tupmeet\local\google\meet_service::SCOPE . ' ' . \mod_tupmeet\local\google\member_service::SCOPE . ' ' .
-        \mod_tupmeet\local\google\member_service::READONLY_SCOPE;
+        \mod_tupmeet\local\google\member_service::READONLY_SCOPE . ' ' .
+        \mod_tupmeet\local\google\drive_metadata_service::SCOPE;
 }

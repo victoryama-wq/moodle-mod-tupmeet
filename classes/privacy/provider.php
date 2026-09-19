@@ -64,6 +64,34 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'artifactconfig' => 'privacy:metadata:artifactconfig',
             'email' => 'privacy:metadata:cohostemail',
         ], 'privacy:metadata:googlemeet');
+        $collection->add_database_table('tupmeet_conferences', [
+            'conferencename' => 'privacy:metadata:conferencename',
+            'starttime' => 'privacy:metadata:recordingtimes',
+            'endtime' => 'privacy:metadata:recordingtimes',
+            'firstseen' => 'privacy:metadata:recordingtimes',
+            'lastseen' => 'privacy:metadata:recordingtimes',
+        ], 'privacy:metadata:conferences');
+        $collection->add_database_table('tupmeet_recordings', [
+            'recordingname' => 'privacy:metadata:recordingname',
+            'starttime' => 'privacy:metadata:recordingtimes',
+            'endtime' => 'privacy:metadata:recordingtimes',
+            'drivefileid' => 'privacy:metadata:recordingdestination',
+            'exporturi' => 'privacy:metadata:recordingdestination',
+            'desiredfilename' => 'privacy:metadata:recordingfilename',
+            'drivefilename' => 'privacy:metadata:recordingfilename',
+            'originalfilename' => 'privacy:metadata:recordingfilename',
+            'state' => 'privacy:metadata:recordingstate',
+            'renamestatus' => 'privacy:metadata:recordingstate',
+            'firstseen' => 'privacy:metadata:recordingtimes',
+            'lastseen' => 'privacy:metadata:recordingtimes',
+        ], 'privacy:metadata:recordings');
+        $collection->add_external_location_link('googlemeetrecordings', [
+            'meetspacename' => 'privacy:metadata:recordingsmeet',
+        ], 'privacy:metadata:recordingsmeet');
+        $collection->add_external_location_link('googledrivemetadata', [
+            'drivefileid' => 'privacy:metadata:recordingdestination',
+            'name' => 'privacy:metadata:recordingfilename',
+        ], 'privacy:metadata:drive');
         return $collection;
     }
 

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/tupmeet/db" VERSION="2026091801" COMMENT="XMLDB file for mod_tupmeet"
+<XMLDB PATH="mod/tupmeet/db" VERSION="2026091900" COMMENT="XMLDB file for mod_tupmeet"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
   <TABLES>
@@ -50,6 +50,14 @@
         <FIELD NAME="spacemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="spacenextattempt" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Not-before time after explicit quota rejection; zero means immediately eligible"/>
         <FIELD NAME="spacehttpstatus" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="recordingsyncstatus" TYPE="char" LENGTH="12" NOTNULL="true" DEFAULT="idle"/>
+        <FIELD NAME="recordingslastsync" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="recordingsnextsync" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="recordingsyncattempts" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="recordingsyncversion" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="idle"/>
+        <FIELD NAME="recordingshttpstatus" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="recordingsyncqueued" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="recordingscheckedversion" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="idle"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>
@@ -61,6 +69,7 @@
         <INDEX NAME="accountid" UNIQUE="false" FIELDS="accountid"/>
         <INDEX NAME="calendareventid" UNIQUE="false" FIELDS="calendareventid"/>
         <INDEX NAME="creationkey" UNIQUE="true" FIELDS="creationkey"/>
+        <INDEX NAME="recordingsdue" UNIQUE="false" FIELDS="recordingsyncstatus,recordingsnextsync"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="tupmeet_accounts" COMMENT="Master Google accounts known by TUP Meet; historical accounts are retained">
@@ -83,6 +92,64 @@
       <INDEXES>
         <INDEX NAME="googleemail" UNIQUE="false" FIELDS="googleemail"/>
         <INDEX NAME="defaultaccount" UNIQUE="false" FIELDS="isdefault,enabled"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="tupmeet_conferences" COMMENT="Observed Meet conferences; retained on remote absence">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="tupmeetid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="conferencename" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="starttime" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="endtime" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="firstseen" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="lastseen" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="tupmeetid" TYPE="foreign" FIELDS="tupmeetid" REFTABLE="tupmeet" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="conferencename" UNIQUE="true" FIELDS="conferencename"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="tupmeet_recordings" COMMENT="Recording metadata only; never media or credentials">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="tupmeetid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="conferenceid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="recordingname" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="state" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="STARTED"/>
+        <FIELD NAME="starttime" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="startnanos" TYPE="int" LENGTH="9" NOTNULL="true" DEFAULT="0" COMMENT="RFC3339 fractional seconds retained for deterministic segment ordering"/>
+        <FIELD NAME="endtime" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="drivefileid" TYPE="char" LENGTH="200" NOTNULL="false"/>
+        <FIELD NAME="exporturi" TYPE="text" NOTNULL="false"/>
+        <FIELD NAME="desiredfilename" TYPE="char" LENGTH="255" NOTNULL="false"/>
+        <FIELD NAME="drivefilename" TYPE="char" LENGTH="255" NOTNULL="false"/>
+        <FIELD NAME="originalfilename" TYPE="char" LENGTH="255" NOTNULL="false"/>
+        <FIELD NAME="partnumber" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="renamestatus" TYPE="char" LENGTH="12" NOTNULL="true" DEFAULT="unavailable"/>
+        <FIELD NAME="renameattempts" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="renamehttpstatus" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="renamedat" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="renameversion" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="idle"/>
+        <FIELD NAME="renamenextattempt" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="renamequeued" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="firstseen" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="lastseen" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="tupmeetid" TYPE="foreign" FIELDS="tupmeetid" REFTABLE="tupmeet" REFFIELDS="id"/>
+        <KEY NAME="conferenceid" TYPE="foreign" FIELDS="conferenceid" REFTABLE="tupmeet_conferences" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="recordingname" UNIQUE="true" FIELDS="recordingname"/>
+        <INDEX NAME="renamedue" UNIQUE="false" FIELDS="renamestatus,renamenextattempt"/>
       </INDEXES>
     </TABLE>
   </TABLES>

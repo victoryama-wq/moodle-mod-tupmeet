@@ -14,18 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace mod_tupmeet\local\google;
+
 /**
- * Version information for TUP Meet.
+ * Safe discovery/metadata failure: no provider text, headers or nested exceptions.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+class recording_exception extends \moodle_exception {
+    /** @var int Sanitized HTTP status, zero when unavailable. */
+    public int $httpstatus;
+    /** @var bool Temporary errors may be retried within the persisted budget. */
+    public bool $retryable;
 
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'mod_tupmeet';
-$plugin->version = 2026091900;
-$plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.7.0-alpha';
+    /**
+     * Construct a safe failure.
+     * @param int $status HTTP status
+     * @param bool $retryable Retry transport and temporary errors only
+     */
+    public function __construct(int $status = 0, bool $retryable = false) {
+        $this->httpstatus = cohost_exception::normalize_http_status($status);
+        $this->retryable = $retryable;
+        parent::__construct('recordingfailed', 'mod_tupmeet');
+    }
+}
