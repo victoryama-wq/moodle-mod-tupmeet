@@ -245,5 +245,12 @@ function xmldb_tupmeet_upgrade($oldversion): bool {
         // No Google access, new tasks or change to existing activity preferences.
         upgrade_mod_savepoint(true, 2026091901, 'tupmeet');
     }
+    if ($oldversion < 2026092101) {
+        // Structural default only: preserve every historical activity preference.
+        $table = new xmldb_table('tupmeet');
+        $field = new xmldb_field('publicationmode', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL, null, 'automatic');
+        $dbman->change_field_default($table, $field);
+        upgrade_mod_savepoint(true, 2026092101, 'tupmeet');
+    }
     return true;
 }

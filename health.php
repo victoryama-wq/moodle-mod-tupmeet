@@ -14,28 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
-namespace mod_tupmeet\local\poc;
-
-use mod_tupmeet\local\google\cohost_exception;
-
 /**
- * Safe experimental failure: no upstream text or chained exception.
+ * Read-only system diagnostics. No external probes or global mutations.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class failure extends \moodle_exception {
-    /** @var int Normalized HTTP status, zero if unknown. */
-    public readonly int $httpstatus;
 
-    /**
-     * Construct a fixed, localized failure.
-     *
-     * @param mixed $status Native HTTP status only
-     */
-    public function __construct(mixed $status = 0) {
-        $this->httpstatus = cohost_exception::normalize_http_status($status);
-        parent::__construct('pocfailed', 'mod_tupmeet');
-    }
-}
+require('../../config.php');
+require_once($CFG->libdir . '/adminlib.php');
+
+require_login();
+require_capability('moodle/site:config', context_system::instance());
+admin_externalpage_setup('tupmeethealth');
+$page = max(0, optional_param('page', 0, PARAM_INT));
+$data = \mod_tupmeet\local\diagnostic\health_service::snapshot($page);
+echo $OUTPUT->header();
+echo $OUTPUT->heading(get_string('healthtitle', 'mod_tupmeet'));
+echo \mod_tupmeet\output\health_dashboard::render($data);
+echo $OUTPUT->footer();

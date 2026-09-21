@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Site administration entry for TUP Meet.
+ * Separate institutional accounts and local operational diagnostics.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
@@ -25,18 +25,16 @@
 defined('MOODLE_INTERNAL') || die();
 
 $settings = null;
-$ADMIN->add('modsettings', new admin_externalpage(
+$ADMIN->add('modsettings', new admin_category('modtupmeet', get_string('pluginname', 'mod_tupmeet')));
+$ADMIN->add('modtupmeet', new admin_externalpage(
     'modsettingtupmeet',
-    get_string('pluginname', 'mod_tupmeet'),
+    get_string('healthaccounts', 'mod_tupmeet'),
     new moodle_url('/mod/tupmeet/accounts.php'),
     'moodle/site:config'
 ));
-
-if (is_siteadmin()) {
-    $ADMIN->add('modsettings', new admin_externalpage(
-        'tupmeetpoc',
-        get_string('poctitle', 'mod_tupmeet'),
-        new moodle_url('/mod/tupmeet/poc_meet_first.php'),
-        'moodle/site:config'
-    ));
-}
+$ADMIN->add('modtupmeet', new admin_externalpage(
+    'tupmeethealth',
+    get_string('healthtitle', 'mod_tupmeet'),
+    new moodle_url('/mod/tupmeet/health.php'),
+    'moodle/site:config'
+));

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/tupmeet/db" VERSION="2026091901" COMMENT="XMLDB file for mod_tupmeet"
+<XMLDB PATH="mod/tupmeet/db" VERSION="2026092101" COMMENT="XMLDB file for mod_tupmeet"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
   <TABLES>
@@ -18,7 +18,7 @@
         <FIELD NAME="recurrenceuntil" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="autorecord" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
         <FIELD NAME="autotranscript" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0"/>
-        <FIELD NAME="publicationmode" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="manual"/>
+        <FIELD NAME="publicationmode" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="automatic"/>
         <FIELD NAME="accountid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Master account used when this meeting was created"/>
         <FIELD NAME="calendareventid" TYPE="char" LENGTH="255" NOTNULL="false"/>
         <FIELD NAME="meetspacename" TYPE="char" LENGTH="255" NOTNULL="false"/>

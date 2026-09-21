@@ -2,7 +2,11 @@
 
 TUP Meet is an institutional Moodle activity module intended to create and manage Google Meet sessions from Moodle while maintaining institutional control of the organizer account and recording history.
 
-## Phase 5 — academic experience and local publication
+## Phase 6A — operational hardening and local diagnostics
+
+Version **2026092101 / 0.8.2-alpha** adds a site-config-only system dashboard using stored local evidence, removes the experimental PoC and aligns the structural publication default with automatic. Existing activity preferences and the academic/Google flows are preserved. See [Phase 6A](docs/PHASE6A.md) for security, task thresholds, validation and the pending staging smoke.
+
+## Preserved Phase 5 — academic experience and local publication
 
 Version **2026091901 / 0.8.0-alpha** presents the next session and a responsive class-recording table. New activities default to automatic publication: newly discovered recordings are initially visible. Teachers can show/hide each recording using Moodle's eye control; subsequent discovery or preference edits preserve individual decisions. Technical diagnostics remain in a separate manager-only panel. See [Phase 5](docs/PHASE5.md) for the upgrade policy, privacy, access boundary and staging checklist.
 
@@ -21,7 +25,7 @@ Version `2026091802` (`0.6.1-alpha`) retains the Meet-first workflow and express
 - Account administration remains under Site administration > Plugins > Activity modules > TUP Meet, using native Moodle OAuth2 and one verified enabled default for new activities.
 - Credentials/tokens remain in Moodle OAuth2. Local deletion never deletes Google events, Spaces, Members or recordings.
 
-The isolated [PoC](docs/PHASE3_3_POC.md) remains staging-only for comparison and must be removed or disabled before a production release. Its cache is never used by normal activities.
+The experimental PoC was removed in Phase 6A. Its [historical evidence](docs/PHASE3_3_POC.md) remains; replace the plugin directory and purge Moodle caches when upgrading so removed PHP files cannot remain accessible.
 
 Phase 4 provides recording discovery and Drive filename updates. Phase 5 adds local academic visibility independently of rename success. Artifact creation depends on Workspace licensing/policies and a privileged participant joining; configuration readiness is not evidence that a recording exists.
 

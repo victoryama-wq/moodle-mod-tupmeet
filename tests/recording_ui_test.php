@@ -148,6 +148,40 @@ final class recording_ui_test extends \advanced_testcase {
     }
 
     /**
+     * Discovery POST has the same server-side boundary as rename; hiding the button is not authorization.
+     * @param string $fault Missing guard
+     * @dataProvider authorization_faults
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('authorization_faults')]
+    public function test_discovery_authorization(string $fault): void {
+        global $DB;
+        $server = $_SERVER;
+        $post = $_POST;
+        $get = $_GET;
+        try {
+            $_SERVER['REQUEST_METHOD'] = $fault === 'get' ? 'GET' : 'POST';
+            $_POST = ['sesskey' => $fault === 'sesskey' ? 'wrong' : sesskey()];
+            $_GET = [];
+            if ($fault === 'student') {
+                $user = $this->getDataGenerator()->create_user();
+                $this->getDataGenerator()->enrol_user($user->id, $this->course->id, 'student');
+                $this->setUser($user);
+                $_POST['sesskey'] = sesskey();
+            }
+            try {
+                actions::execute($this->cm, $this->context, 'sync');
+                $this->fail('Unauthorized discovery accepted');
+            } catch (\moodle_exception $e) {
+                $this->assertSame(0, $DB->count_records('task_adhoc'));
+            }
+        } finally {
+            $_SERVER = $server;
+            $_POST = $post;
+            $_GET = $get;
+        }
+    }
+
+    /**
      * A valid rename POST queues only rename, not discovery or meeting provisioning.
      */
     public function test_manual_rename_is_scoped_and_throttled(): void {

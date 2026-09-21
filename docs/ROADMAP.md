@@ -80,12 +80,14 @@ Local implementation: **2026091901 / 0.8.0-alpha**, branch **codex/fase-5-ui-pub
 Academic session summary and responsive recording table, initial automatic/manual
 visibility, individual eye controls, last-actor privacy and local audit events.
 Technical diagnostics are manager-only. Phase 4 synchronization/rename and all
-Google scopes/permissions remain unchanged. Remote CI and Phase 5 staging smoke
-require separate validation. See [Phase 5](PHASE5.md).
+Google scopes/permissions remain unchanged. The owner subsequently approved the
+Phase 5.1 remote audit and visual correction in staging. See [Phase 5](PHASE5.md)
+for historical implementation details and [Phase 6A](PHASE6A.md) for the next boundary.
 
-## Phase 6 — legacy migration
+## Phase 6A — operational hardening and diagnostics
 
-- Read existing `mod_googlemeet` activities.
-- Analyze legacy links/metadata.
-- Non-destructive migration preview.
-- Import validated activities and existing recording references.
+Local version **2026092101 / 0.8.2-alpha**. Local-only site dashboard, task diagnostics, permission audit, bounded recovery/load tests, PoC removal and structural publication default alignment. Phase 5.1 visual smoke was approved by the owner; Phase 6A remote CI and staging smoke remain separate pending steps. See [Phase 6A](PHASE6A.md).
+
+## Phase 6B — one-time historical recording migration by CSV
+
+Planned only; not implemented. Historical videos remain in Drive: no moving, mandatory rename or permission changes. Future session-name matching removes the technical (####) suffix and uses date/time/Recording 2 to reconstruct sessions and parts. A separate legacy table is planned, without fake conferenceRecords. No direct mod_googlemeet migration, CSV parser, importer or legacy schema exists in Phase 6A.

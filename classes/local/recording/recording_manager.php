@@ -81,6 +81,19 @@ class recording_manager {
         try {
             $meeting = $DB->get_record('tupmeet', ['id' => $id]);
             if (!$meeting || !self::eligible($meeting)) {
+                // Quarantine malformed scheduler candidates under the same lock as active workers.
+                // Clearing the due timestamp is essential: status=error alone still matches dispatch().
+                if (
+                    $meeting && !$manual && !empty($meeting->accountid) && $meeting->meetspacename !== null &&
+                    (($meeting->provisionmode === 'meet' && $meeting->spacestatus === 'ready') ||
+                        $meeting->provisionmode === 'calendar') &&
+                    !recording_service::valid_space($meeting->meetspacename)
+                ) {
+                    $DB->update_record('tupmeet', (object) [
+                        'id' => $id, 'recordingsyncstatus' => 'error', 'recordingsnextsync' => 0,
+                        'recordingshttpstatus' => 0,
+                    ]);
+                }
                 return false;
             }
             $now = time();
@@ -148,12 +161,6 @@ class recording_manager {
         foreach ($rows as $row) {
             if (self::queue((int) $row->id)) {
                 $count++;
-            } else {
-                // Invalid canonical identities must not starve later backfill rows.
-                $meeting = $DB->get_record('tupmeet', ['id' => $row->id]);
-                if ($meeting && !self::eligible($meeting) && $meeting->recordingsyncstatus === 'idle') {
-                    $DB->update_record('tupmeet', (object) ['id' => $row->id, 'recordingsyncstatus' => 'error']);
-                }
             }
         }
         rename_manager::dispatch();

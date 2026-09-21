@@ -172,3 +172,11 @@ The academic catalog queries only studentvisible=1 for non-managers, including i
 publicationmode initializes new recordings once; normal new activities default to automatic. The upgrade initializes existing recording visibility from each unchanged activity preference. Individual hide/show actions are local POST + sesskey + manageactivities operations, sharing the activity lock with discovery. They update only visibility and last-actor metadata and emit an event containing local IDs only. Privacy exports and anonymizes attribution without changing visibility or shared institutional files.
 
 This is Moodle link visibility, not a Drive ACL. Existing institutional readers may access a previously obtained/shared URL. No scopes, Google services, polling or rename algorithm change. See [Phase 5](PHASE5.md).
+
+## Phase 6A operational boundary
+
+The site-config-only health_service uses bounded local projections, SQL aggregates and native task getters. It never constructs an OAuth or Google client, writes core task tables, persists a health history or exposes remote identifiers. Native output is independent of the academic UI. Accounts and diagnostics are separate admin destinations. No global recovery buttons exist; explicit recovery remains per activity.
+
+The PoC route, namespace, form and cache definition are removed; historical documentation is retained. The only schema change is publicationmode DEFAULT automatic with a structural XMLDB upgrade preserving existing values. See [Phase 6A](PHASE6A.md) for the security matrix, timestamps, task thresholds and recovery coverage.
+
+Future Phase 6B is a one-time CSV migration into separate legacy recording metadata, with no fake conferenceRecords and no direct reads of mod_googlemeet. Videos remain in Drive, without required rename, moving or permission changes. Session-name matching will strip (####) and use date/time/Recording 2 for session/part reconstruction. This is a design decision only: no importer, parser or legacy table is implemented.
