@@ -21,7 +21,7 @@
         <tbody role="rowgroup">
         {{#rows}}
             <tr role="row">
-                <td role="cell"><span aria-hidden="true">{{#pix}}f/video, core{{/pix}}</span></td>
+                <td role="cell"><span class="mod-tupmeet-play" aria-hidden="true">{{#pix}}t/play, core{{/pix}}</span></td>
                 <th scope="row" role="rowheader">{{date}}{{#part}}<div class="small">{{part}}</div>{{/part}}</th>
                 <td role="cell"><span class="mod-tupmeet-mobile-label" aria-hidden="true">{{#str}}recordinghours, mod_tupmeet{{/str}}: </span>{{hours}}</td>
                 <td role="cell"><span class="mod-tupmeet-mobile-label" aria-hidden="true">{{#str}}recordingsstate, mod_tupmeet{{/str}}: </span>{{state}}</td>
@@ -29,7 +29,7 @@
                     {{#filename}}<div class="small mb-2">{{filename}}</div>{{/filename}}
                     {{#url}}
                         <a href="{{url}}" class="btn btn-outline-primary mod-tupmeet-watch" target="_blank" rel="noopener noreferrer">
-                            <span aria-hidden="true">{{#pix}}f/video, core{{/pix}}</span>
+                            <span class="mod-tupmeet-play" aria-hidden="true">{{#pix}}t/play, core{{/pix}}</span>
                             {{#str}}recordingwatch, mod_tupmeet{{/str}}
                             <span class="mod-tupmeet-sr"> — {{date}} {{hours}} {{part}}; {{#str}}opensnewtab, mod_tupmeet{{/str}}</span>
                         </a>

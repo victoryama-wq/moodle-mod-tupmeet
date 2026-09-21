@@ -287,3 +287,35 @@ Modificados (23):
 - `tests/upgrade_test.php`
 - `version.php`
 - `view.php`
+
+## Fase 5.1 — Pulido visual
+
+- Base: `f6955403c822f5cdf2eae0b02f43873473f598b1`.
+- Rama: `codex/fase-5-1-ui-polish`; versión `2026092100 / 0.8.1-alpha`.
+- Se elimina únicamente el heading adicional de `view.php`; se conservan
+  `set_title`, `set_heading` y el encabezado generado por Moodle/Boost Union.
+- La columna Video y el botón Ver grabación usan `{{#pix}}t/play, core{{/pix}}`.
+  El recurso `pix/t/play.svg` y su mapeo nativo están verificados en Moodle
+  4.5, 5.0 y 5.1: triángulo de reproducción, sin forma de archivo/documento.
+  CSS scoped le da 24 px; no se añade SVG propio ni Font Awesome hardcodeado.
+- El icono sigue siendo decorativo; se conservan texto, URL, pestaña nueva,
+  `noopener noreferrer`, controles de ojo y estructura responsive.
+- Sin cambios funcionales de Fase 5, Google, esquema DB ni pasos de upgrade.
+  `install.xml` conserva la versión del último cambio de esquema.
+
+Validación local (PHP 8.3.33 / MariaDB 10.11.14, Google simulado):
+
+| Moodle | Pruebas | Aserciones | Resultado |
+| --- | ---: | ---: | --- |
+| 4.5.14 | 356 | 7715 | PASS |
+| 5.0.10 | 356 | 7716 | PASS |
+| 5.1.7 | 356 | 7716 | PASS |
+
+Se conservaron todas las pruebas sin modificarlas. PHPCS sin errores/advertencias,
+sintaxis de 85 archivos PHP, estructura, ocho savepoints y `git diff --check`: PASS.
+Comparación exacta de `view.php` y template: únicamente los cambios visuales indicados.
+HTML generado con Moodle 4.5/Boost y datos sintéticos, inspeccionado en Edge local
+a 320, 390, 768 y 1280 px para ambos roles: Play de 24 px, sin overflow,
+resumen y tabla presentes, URL/target/rel y controles de ojo conservados,
+panel técnico solo para gestores. Sin solicitudes externas desde el visor.
+La comprobación con Boost Union en staging queda pendiente; no hubo push ni deploy.

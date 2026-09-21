@@ -42,7 +42,6 @@ $PAGE->set_heading(format_string($course->fullname));
 $PAGE->set_context($context);
 
 echo $OUTPUT->header();
-echo $OUTPUT->heading(format_string($tupmeet->name));
 
 if (!empty($tupmeet->intro)) {
     echo $OUTPUT->box(format_module_intro('tupmeet', $tupmeet, $cm->id), 'generalbox mod_introbox');
