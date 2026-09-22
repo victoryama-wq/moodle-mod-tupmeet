@@ -10,8 +10,10 @@ auditoría, validaciones y documentación; sin nuevas funciones ni cambios de es
 
 La base Fase 6B cuenta con CI remoto aprobado y smoke real de staging confirmado por el propietario,
 incluyendo Meet-first, artifacts, grabaciones/publicación y CSV idempotente.
-La validación remota específica del RC, su smoke y el piloto son etapas separadas pendientes de autorización.
-Este RC no es una publicación estable 1.0 ni un despliegue realizado.
+La validación remota del RC está aprobada: [TUP Meet CI #35785884626](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35785884626)
+PASS en QUALITY y PHPUnit Moodle 4.5/5.0/5.1; resultados completos en [Fase 7](docs/PHASE7.md).
+El smoke en Moodle productivo y el piloto siguen pendientes. No hubo deploy, instalación en producción
+ni release publicado; este RC no es una publicación estable 1.0.
 
 ## Funciones disponibles
 

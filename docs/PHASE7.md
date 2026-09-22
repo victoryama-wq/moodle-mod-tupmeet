@@ -13,8 +13,21 @@
 **Evidencia separada:** la base 6B tiene CI remoto aprobado
 ([ejecución 35767723395](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35767723395),
 482 pruebas por Moodle). El propietario confirmó smoke staging aprobado hasta 6B, incluyendo CSV,
-idempotencia, publicación y cronología combinada. Fase 7 verifica el RC localmente con datos sintéticos;
-CI remoto del RC, smoke RC y piloto no se ejecutan por inferencia de esas aprobaciones previas.
+idempotencia, publicación y cronología combinada. Fase 7 validó el RC localmente con datos sintéticos.
+
+**Validación remota del RC aprobada:** [TUP Meet CI #35785884626](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35785884626),
+ejecutado sobre `841ba96483c5ba387f5d915a7c103a4058747809`, terminó con estos resultados:
+
+| Job | Pruebas | Aserciones | Resultado |
+|---|---:|---:|---|
+| QUALITY | — | — | PASS |
+| PHPUNIT Moodle 4.5 | 487 | 8018 | PASS |
+| PHPUNIT Moodle 5.0 | 487 | 8019 | PASS |
+| PHPUNIT Moodle 5.1 | 487 | 8019 | PASS |
+
+Esta evidencia corresponde al commit indicado, anterior al parche documental de cierre.
+El smoke en Moodle productivo y el piloto siguen pendientes; el CI aprobado no implica deploy,
+instalación en producción ni release publicado.
 
 ## Auditoría de regresión
 
@@ -203,7 +216,9 @@ Este requisito de entorno no añade configuración ni archivos al plugin.
 [TEACHER_GUIDE](TEACHER_GUIDE.md), [PILOT](PILOT.md), [README](../README.md) y [ROADMAP](ROADMAP.md).
 Las notas de fases históricas separan estado original de CI/smoke posteriores, sin reescribir esa historia.
 
-Pendientes: revisión del commit RC, push/CI remoto autorizado, paquete autorizado, smoke RC y piloto
-institucional autorizado. Riesgos abiertos: Calendar persistente, resultados Space inciertos, permisos Drive
+El push y la validación remota del RC indicado arriba están completados y aprobados.
+Pendientes: paquete autorizado, smoke en Moodle productivo y piloto institucional autorizado.
+Riesgos abiertos: Calendar persistente, resultados Space inciertos, permisos Drive
 fuera de Moodle, retención/procesamiento/licencias y falta de backup/restore por actividad, detallados en limitaciones.
-No se efectuaron merge, push, deploy, release, piloto, CSV real, llamadas autenticadas a Google ni cambios Drive.
+No se efectuaron merge, deploy, instalación en producción, release publicado, piloto, CSV real,
+llamadas autenticadas a Google ni cambios Drive.

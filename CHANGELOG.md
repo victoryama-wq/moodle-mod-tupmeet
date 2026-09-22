@@ -29,4 +29,7 @@ metadata de release/madurez, auditoría, pruebas y documentación; sin nuevas fu
 `2026092201`, `MATURITY_RC`; esquema se mantiene en `2026092200`.
 Matriz Moodle 4.5/5.0/5.1 con PHP 8.3. Se conserva la suite base de 482 casos y se amplía
 la comprobación de instalación, actualización metadata-only y guardas de endpoints.
-Evidencia y límites: [Fase 7](docs/PHASE7.md). RC pendiente de validación remota propia y smoke/piloto autorizados.
+Evidencia y límites: [Fase 7](docs/PHASE7.md). Validación remota del RC aprobada:
+[TUP Meet CI #35785884626](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35785884626) PASS,
+QUALITY y 487 pruebas por Moodle (4.5: 8018 aserciones; 5.0/5.1: 8019 cada una).
+El smoke en Moodle productivo y el piloto siguen pendientes; sin deploy, instalación en producción ni release publicado.
