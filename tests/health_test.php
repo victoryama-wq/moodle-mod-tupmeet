@@ -425,9 +425,10 @@ final class health_test extends \advanced_testcase {
      */
     public function test_poc_removed(): void {
         $root = dirname(__DIR__);
-        foreach (['poc_meet_first.php', 'classes/form/poc_setup_form.php', 'db/caches.php'] as $file) {
+        foreach (['poc_meet_first.php', 'classes/form/poc_setup_form.php'] as $file) {
             $this->assertFileDoesNotExist($root . '/' . $file);
         }
+        $this->assertStringNotContainsString('tupmeetpoc', file_get_contents($root . '/db/caches.php'));
         $this->assertStringNotContainsString('tupmeetpoc', file_get_contents($root . '/settings.php'));
         $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root . '/classes'));
         foreach ($files as $file) {

@@ -57,6 +57,11 @@ class recording_diagnostics {
             return '';
         }
         $html = $OUTPUT->heading(get_string('recordings', 'tupmeet'), 3);
+        $html .= \html_writer::div(get_string(
+            'legacycount',
+            'tupmeet',
+            $DB->count_records('tupmeet_legacy_recordings', ['tupmeetid' => $meeting->id])
+        ));
         $status = in_array($meeting->recordingsyncstatus, ['idle', 'pending', 'syncing', 'ready', 'error'], true) ?
             $meeting->recordingsyncstatus : 'error';
         $html .= \html_writer::div(get_string('recordingssync' . $status, 'tupmeet'));

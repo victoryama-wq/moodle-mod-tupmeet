@@ -109,6 +109,7 @@ function tupmeet_delete_instance($id) {
     }
     try {
         $transaction = $DB->start_delegated_transaction();
+        $DB->delete_records('tupmeet_legacy_recordings', ['tupmeetid' => $id]);
         $DB->delete_records('tupmeet_recordings', ['tupmeetid' => $id]);
         $DB->delete_records('tupmeet_conferences', ['tupmeetid' => $id]);
         $DB->delete_records('tupmeet', ['id' => $id]);

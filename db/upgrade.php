@@ -252,5 +252,34 @@ function xmldb_tupmeet_upgrade($oldversion): bool {
         $dbman->change_field_default($table, $field);
         upgrade_mod_savepoint(true, 2026092101, 'tupmeet');
     }
+    if ($oldversion < 2026092200) {
+        $table = new xmldb_table('tupmeet_legacy_recordings');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('tupmeetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('sessionname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('sessionstart', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('partnumber', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '1');
+        $table->add_field('drivefileid', XMLDB_TYPE_CHAR, '200', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('exporturi', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+        $table->add_field('originalfilename', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('studentvisible', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
+        $table->add_field('visibilitymodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('visibilityuserid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('importedat', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('importeduserid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('tupmeetid', XMLDB_KEY_FOREIGN, ['tupmeetid'], 'tupmeet', ['id']);
+        $table->add_index('drivefileid', XMLDB_INDEX_UNIQUE, ['drivefileid']);
+        $table->add_index('studentlist', XMLDB_INDEX_NOTUNIQUE, ['tupmeetid', 'studentvisible', 'sessionstart']);
+        $table->add_index('visibilityuserid', XMLDB_INDEX_NOTUNIQUE, ['visibilityuserid']);
+        $table->add_index('importeduserid', XMLDB_INDEX_NOTUNIQUE, ['importeduserid']);
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+        // Schema only. No import, queues or external requests during upgrade.
+        upgrade_mod_savepoint(true, 2026092200, 'tupmeet');
+    }
     return true;
 }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/tupmeet/db" VERSION="2026092101" COMMENT="XMLDB file for mod_tupmeet"
+<XMLDB PATH="mod/tupmeet/db" VERSION="2026092200" COMMENT="XMLDB file for mod_tupmeet"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
   <TABLES>
@@ -155,6 +155,35 @@
         <INDEX NAME="renamedue" UNIQUE="false" FIELDS="renamestatus,renamenextattempt"/>
         <INDEX NAME="studentlist" UNIQUE="false" FIELDS="tupmeetid,studentvisible"/>
         <INDEX NAME="visibilityuserid" UNIQUE="false" FIELDS="visibilityuserid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="tupmeet_legacy_recordings" COMMENT="Historical CSV references; no Meet resource identities">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="tupmeetid" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="sessionname" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="sessionstart" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="partnumber" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="drivefileid" TYPE="char" LENGTH="200" NOTNULL="true"/>
+        <FIELD NAME="exporturi" TYPE="text" NOTNULL="true"/>
+        <FIELD NAME="originalfilename" TYPE="char" LENGTH="255" NOTNULL="true"/>
+        <FIELD NAME="studentvisible" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="visibilitymodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="visibilityuserid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="importedat" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="importeduserid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="tupmeetid" TYPE="foreign" FIELDS="tupmeetid" REFTABLE="tupmeet" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="drivefileid" UNIQUE="true" FIELDS="drivefileid"/>
+        <INDEX NAME="studentlist" UNIQUE="false" FIELDS="tupmeetid,studentvisible,sessionstart"/>
+        <INDEX NAME="visibilityuserid" UNIQUE="false" FIELDS="visibilityuserid"/>
+        <INDEX NAME="importeduserid" UNIQUE="false" FIELDS="importeduserid"/>
       </INDEXES>
     </TABLE>
   </TABLES>

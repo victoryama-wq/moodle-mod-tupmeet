@@ -14,34 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace mod_tupmeet\form;
+
+defined('MOODLE_INTERNAL') || die();
+require_once($CFG->libdir . '/formslib.php');
+
 /**
- * Separate institutional accounts and local operational diagnostics.
+ * Upload only; the submit action creates a preview, never imports.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-$settings = null;
-$ADMIN->add('modsettings', new admin_category('modtupmeet', get_string('pluginname', 'mod_tupmeet')));
-$ADMIN->add('modtupmeet', new admin_externalpage(
-    'modsettingtupmeet',
-    get_string('healthaccounts', 'mod_tupmeet'),
-    new moodle_url('/mod/tupmeet/accounts.php'),
-    'moodle/site:config'
-));
-$ADMIN->add('modtupmeet', new admin_externalpage(
-    'tupmeethealth',
-    get_string('healthtitle', 'mod_tupmeet'),
-    new moodle_url('/mod/tupmeet/health.php'),
-    'moodle/site:config'
-));
-
-$ADMIN->add('modtupmeet', new admin_externalpage(
-    'tupmeetlegacy',
-    get_string('legacytitle', 'mod_tupmeet'),
-    new moodle_url('/mod/tupmeet/legacy.php'),
-    'moodle/site:config'
-));
+class legacy_import_form extends \moodleform {
+    /**
+     * Define a bounded Moodle draft upload.
+     */
+    public function definition() {
+        $form = $this->_form;
+        $form->addElement('filepicker', 'csvfile', get_string('legacycsvfile', 'tupmeet'), null, [
+            'accepted_types' => ['.csv'], 'maxbytes' => \mod_tupmeet\local\legacy\csv_validator::MAX_BYTES,
+        ]);
+        $form->addRule('csvfile', null, 'required');
+        $this->add_action_buttons(false, get_string('legacyreview', 'tupmeet'));
+    }
+}

@@ -38,22 +38,26 @@ class recording_list {
         global $DB, $OUTPUT;
         require_capability('mod/tupmeet:view', $context);
         $manage = has_capability('moodle/course:manageactivities', $context);
-        $params = ['id' => $meeting->id];
-        $where = 'r.tupmeetid = :id' . ($manage ? '' : ' AND r.studentvisible = 1');
-        $total = $DB->count_records_sql('SELECT COUNT(1) FROM {tupmeet_recordings} r WHERE ' . $where, $params);
+        $visible = $manage ? '' : ' AND r.studentvisible = 1';
+        $params = ['nativeid' => $meeting->id, 'legacyid' => $meeting->id];
+        $nativekey = $DB->sql_concat("'n'", $DB->sql_cast_to_char('r.id'));
+        $legacykey = $DB->sql_concat("'l'", $DB->sql_cast_to_char('r.id'));
+        $nativefields = $manage ? ', r.studentvisible, r.drivefilename, r.desiredfilename' : '';
+        $legacyfields = $manage ? ", r.studentvisible, '' AS drivefilename, '' AS desiredfilename" : '';
+        $union = "SELECT $nativekey AS rowkey, r.id, 'native' AS origin, r.state, r.drivefileid, r.exporturi,
+                        r.partnumber, c.starttime AS conferencestart, r.starttime, r.startnanos, r.recordingname
+                        $nativefields
+                   FROM {tupmeet_recordings} r JOIN {tupmeet_conferences} c ON c.id = r.conferenceid
+                  WHERE r.tupmeetid = :nativeid $visible
+                  UNION ALL
+                 SELECT $legacykey AS rowkey, r.id, 'legacy' AS origin, 'FILE_GENERATED' AS state,
+                        r.drivefileid, r.exporturi, r.partnumber, r.sessionstart AS conferencestart,
+                        r.sessionstart AS starttime, 0 AS startnanos, '' AS recordingname $legacyfields
+                   FROM {tupmeet_legacy_recordings} r WHERE r.tupmeetid = :legacyid $visible";
+        $total = $DB->count_records_sql('SELECT COUNT(1) FROM (' . $union . ') combined', $params);
         $page = max(0, min($page, (int) floor(max(0, $total - 1) / 50)));
-        $fields = 'r.id, r.state, r.drivefileid, r.exporturi, r.partnumber, c.starttime AS conferencestart';
-        if ($manage) {
-            $fields .= ', r.studentvisible, r.drivefilename, r.desiredfilename';
-        }
-        $records = $DB->get_records_sql(
-            'SELECT ' . $fields . ' FROM {tupmeet_recordings} r
-               JOIN {tupmeet_conferences} c ON c.id = r.conferenceid
-              WHERE ' . $where . ' ORDER BY c.starttime DESC, r.starttime, r.startnanos, r.recordingname',
-            $params,
-            $page * 50,
-            50
-        );
+        $records = $DB->get_records_sql('SELECT * FROM (' . $union . ') combined
+            ORDER BY conferencestart DESC, partnumber, starttime, startnanos, recordingname, rowkey', $params, $page * 50, 50);
         $rows = [];
         foreach ($records as $record) {
             $state = in_array($record->state, ['STARTED', 'ENDED', 'FILE_GENERATED'], true) ? $record->state : 'ENDED';
@@ -71,7 +75,7 @@ class recording_list {
                 $row += [
                     'recordingid' => (int) $record->id,
                     'filename' => $record->drivefilename ?? $record->desiredfilename ?? '',
-                    'action' => $visible ? 'hide' : 'show',
+                    'action' => ($visible ? 'hide' : 'show') . ($record->origin === 'legacy' ? 'legacy' : ''),
                     'visibilitylabel' => get_string($visible ? 'recordinghide' : 'recordingshow', 'tupmeet'),
                     'visibilitystate' => get_string($visible ? 'recordingvisible' : 'recordinghidden', 'tupmeet'),
                     'visibilityicon' => $OUTPUT->pix_icon($visible ? 't/hide' : 't/show', '', 'moodle'),

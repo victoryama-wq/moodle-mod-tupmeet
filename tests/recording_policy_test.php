@@ -193,7 +193,7 @@ final class recording_policy_test extends \advanced_testcase {
         $tasks = $DB->count_records('task_adhoc');
         set_config('version', 2026091802, 'mod_tupmeet');
         $this->assertTrue(xmldb_tupmeet_upgrade(2026091802));
-        $this->assertEquals(2026092101, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026092200, get_config('mod_tupmeet', 'version'));
         $this->assertEquals($tasks, $DB->count_records('task_adhoc'));
         foreach ($ids as $id => $before) {
             $after = $DB->get_record('tupmeet', ['id' => $id]);

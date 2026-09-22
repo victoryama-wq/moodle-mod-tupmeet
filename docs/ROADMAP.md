@@ -86,8 +86,13 @@ for historical implementation details and [Phase 6A](PHASE6A.md) for the next bo
 
 ## Phase 6A — operational hardening and diagnostics
 
-Local version **2026092101 / 0.8.2-alpha**. Local-only site dashboard, task diagnostics, permission audit, bounded recovery/load tests, PoC removal and structural publication default alignment. Phase 5.1 visual smoke was approved by the owner; Phase 6A remote CI and staging smoke remain separate pending steps. See [Phase 6A](PHASE6A.md).
+Local version **2026092101 / 0.8.2-alpha**. Local-only site dashboard, task diagnostics, permission audit, bounded recovery/load tests, PoC removal and structural publication default alignment. Phase 5.1 visual smoke was approved by the owner; Phase 6A remote CI, upgrade and staging smoke were subsequently approved by the owner. See [Phase 6A](PHASE6A.md).
 
 ## Phase 6B — one-time historical recording migration by CSV
 
-Planned only; not implemented. Historical videos remain in Drive: no moving, mandatory rename or permission changes. Future session-name matching removes the technical (####) suffix and uses date/time/Recording 2 to reconstruct sessions and parts. A separate legacy table is planned, without fake conferenceRecords. No direct mod_googlemeet migration, CSV parser, importer or legacy schema exists in Phase 6A.
+Local implementation **2026092200 / 0.8.3-alpha** on codex/fase-6b-legacy-csv.
+Separate CSV references, strict exact matching to Meet-first activities,
+preview/confirmation, idempotent transactional import, unified academic catalog,
+local eye controls and privacy attribution. CSV normalization happens externally:
+no old-name parser, Google requests, Drive changes or mod_googlemeet dependency.
+Remote CI and staging smoke remain later authorized stages. See [Phase 6B](PHASE6B.md).

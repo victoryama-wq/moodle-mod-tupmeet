@@ -14,47 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
-namespace mod_tupmeet\local\recording;
+namespace mod_tupmeet\local\legacy;
 
 /**
- * Server authorization shared by recording POST actions and tests.
+ * Local-only historical visibility with fixed table and explicit actions.
  *
  * @package    mod_tupmeet
  * @copyright  2026 Tecnologico Universitario Region Sureste
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class actions {
-    /**
-     * Queue only the requested subsystem; never accept a remote ID or filename.
-     * @param \stdClass $cm Course module already resolved by Moodle
-     * @param \context_module $context Module context
-     * @param string $action sync, rename, hide or show
-     * @param int $recordingid Local recording ID
-     * @return bool Accepted or throttled
-     */
-    public static function execute(\stdClass $cm, \context_module $context, string $action, int $recordingid = 0): bool {
-        global $DB;
-        require_capability('moodle/course:manageactivities', $context);
-        if ($context->instanceid != $cm->id || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-            throw new \moodle_exception('invalidrequest');
-        }
-        require_sesskey();
-        if (in_array($action, ['hide', 'show'], true)) {
-            return self::visibility($cm, $context, $recordingid, $action === 'show');
-        }
-        if (in_array($action, ['hidelegacy', 'showlegacy'], true)) {
-            return \mod_tupmeet\local\legacy\visibility::change($cm, $context, $recordingid, $action === 'showlegacy');
-        }
-        if ($action === 'sync') {
-            return recording_manager::queue((int) $cm->instance, true);
-        }
-        if ($action === 'rename') {
-            $DB->get_record('tupmeet_recordings', ['id' => $recordingid, 'tupmeetid' => $cm->instance], '*', MUST_EXIST);
-            return rename_manager::queue($recordingid, true);
-        }
-        throw new \moodle_exception('invalidrequest');
-    }
-
+class visibility {
     /**
      * Persist only local visibility under the same activity lock as discovery.
      * Explicit show/hide is idempotent, so a repeated POST cannot accidentally toggle twice.
@@ -64,21 +33,26 @@ class actions {
      * @param bool $visible Requested action, resolved by the server
      * @return bool
      */
-    private static function visibility(\stdClass $cm, \context_module $context, int $id, bool $visible): bool {
+    public static function change(\stdClass $cm, \context_module $context, int $id, bool $visible): bool {
         global $DB, $USER;
+        require_capability('moodle/course:manageactivities', $context);
+        if ($context->instanceid != $cm->id || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            throw new \moodle_exception('invalidrequest');
+        }
+        require_sesskey();
         $lock = \core\lock\lock_config::get_lock_factory('mod_tupmeet')->get_lock('meeting:' . $cm->instance, 0);
         if (!$lock) {
             throw new \moodle_exception('visibilitybusy', 'mod_tupmeet');
         }
         try {
             $transaction = $DB->start_delegated_transaction();
-            $record = $DB->get_record('tupmeet_recordings', ['id' => $id, 'tupmeetid' => $cm->instance], '*', MUST_EXIST);
+            $record = $DB->get_record('tupmeet_legacy_recordings', ['id' => $id, 'tupmeetid' => $cm->instance], '*', MUST_EXIST);
             if ((bool) $record->studentvisible !== $visible) {
-                $DB->update_record('tupmeet_recordings', (object) [
+                $DB->update_record('tupmeet_legacy_recordings', (object) [
                     'id' => $id, 'studentvisible' => (int) $visible,
                     'visibilitymodified' => time(), 'visibilityuserid' => $USER->id,
                 ]);
-                \mod_tupmeet\event\recording_visibility_changed::create([
+                \mod_tupmeet\event\legacy_recording_visibility_changed::create([
                     'context' => $context, 'objectid' => $id,
                     'other' => ['visible' => (int) $visible, 'activityid' => (int) $cm->instance],
                 ])->trigger();

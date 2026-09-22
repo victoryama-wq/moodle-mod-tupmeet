@@ -93,6 +93,21 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'drivefileid' => 'privacy:metadata:recordingdestination',
             'name' => 'privacy:metadata:recordingfilename',
         ], 'privacy:metadata:drive');
+        $collection->add_database_table('tupmeet_legacy_recordings', [
+            'sessionname' => 'privacy:metadata:legacysession',
+            'sessionstart' => 'privacy:metadata:recordingtimes',
+            'partnumber' => 'privacy:metadata:legacypart',
+            'drivefileid' => 'privacy:metadata:legacydestination',
+            'exporturi' => 'privacy:metadata:legacydestination',
+            'originalfilename' => 'privacy:metadata:recordingfilename',
+            'studentvisible' => 'privacy:metadata:studentvisible',
+            'visibilityuserid' => 'privacy:metadata:visibilityuserid',
+            'visibilitymodified' => 'privacy:metadata:visibilitymodified',
+            'importeduserid' => 'privacy:metadata:importeduserid',
+            'importedat' => 'privacy:metadata:importedat',
+            'timecreated' => 'privacy:metadata:recordingtimes',
+            'timemodified' => 'privacy:metadata:recordingtimes',
+        ], 'privacy:metadata:legacy');
         return $collection;
     }
 
@@ -110,8 +125,11 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
                JOIN {modules} m ON m.id = cm.module AND m.name = :module
                JOIN {tupmeet} t ON t.id = cm.instance
               WHERE t.cohostuserid = :userid OR EXISTS (
-                    SELECT 1 FROM {tupmeet_recordings} r WHERE r.tupmeetid = t.id AND r.visibilityuserid = :actor)',
-            ['level' => CONTEXT_MODULE, 'module' => 'tupmeet', 'userid' => $userid, 'actor' => $userid]
+                    SELECT 1 FROM {tupmeet_recordings} r WHERE r.tupmeetid = t.id AND r.visibilityuserid = :actor)
+                 OR EXISTS (SELECT 1 FROM {tupmeet_legacy_recordings} l WHERE l.tupmeetid = t.id
+                            AND (l.visibilityuserid = :legacyactor OR l.importeduserid = :importer))',
+            ['level' => CONTEXT_MODULE, 'module' => 'tupmeet', 'userid' => $userid, 'actor' => $userid,
+                'legacyactor' => $userid, 'importer' => $userid]
         );
         return $contexts;
     }
@@ -142,6 +160,13 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             $userlist->add_user((int) $record->cohostuserid);
         }
         if ($record) {
+            foreach (['visibilityuserid', 'importeduserid'] as $field) {
+                $userlist->add_from_sql(
+                    $field,
+                    'SELECT ' . $field . ' FROM {tupmeet_legacy_recordings} WHERE tupmeetid = :id AND ' . $field . ' > 0',
+                    ['id' => $record->id]
+                );
+            }
             $userlist->add_from_sql(
                 'visibilityuserid',
                 'SELECT visibilityuserid FROM {tupmeet_recordings} WHERE tupmeetid = :id AND visibilityuserid > 0',
@@ -160,6 +185,18 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         foreach ($contextlist->get_contexts() as $context) {
             $record = self::activity($context);
             if ($record) {
+                $attributions = ['visibilityuserid' => 'studentvisible,visibilitymodified', 'importeduserid' => 'importedat'];
+                foreach ($attributions as $actor => $fields) {
+                    $legacy = $DB->get_records('tupmeet_legacy_recordings', [
+                        'tupmeetid' => $record->id, $actor => $contextlist->get_user()->id,
+                    ], 'id', 'id,' . $actor . ',' . $fields);
+                    if ($legacy) {
+                        \core_privacy\local\request\writer::with_context($context)->export_data(
+                            [get_string('legacyattribution', 'tupmeet'), $actor],
+                            (object) ['recordings' => array_values($legacy)]
+                        );
+                    }
+                }
                 $rows = $DB->get_records('tupmeet_recordings', [
                     'tupmeetid' => $record->id, 'visibilityuserid' => $contextlist->get_user()->id,
                 ], 'id', 'id,studentvisible,visibilitymodified,visibilityuserid');
@@ -272,6 +309,10 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         }
         try {
             $DB->execute('UPDATE {tupmeet_recordings} SET visibilityuserid = 0, visibilitymodified = 0 WHERE ' . $where, $params);
+            $DB->execute('UPDATE {tupmeet_legacy_recordings} SET visibilityuserid = 0, visibilitymodified = 0 WHERE ' .
+                $where, $params);
+            $importwhere = str_replace('visibilityuserid', 'importeduserid', $where);
+            $DB->execute('UPDATE {tupmeet_legacy_recordings} SET importeduserid = 0 WHERE ' . $importwhere, $params);
         } finally {
             $lock->release();
         }

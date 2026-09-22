@@ -61,7 +61,7 @@ final class publication_upgrade_test extends \advanced_testcase {
         }
         set_config('version', 2026091900, 'mod_tupmeet');
         $this->assertTrue(xmldb_tupmeet_upgrade(2026091900));
-        $this->assertEquals(2026092101, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026092200, get_config('mod_tupmeet', 'version'));
         foreach ($before as $id => [$mode, $row]) {
             $after = $DB->get_record('tupmeet_recordings', ['id' => $id]);
             foreach ($row as $field => $value) {
@@ -77,7 +77,7 @@ final class publication_upgrade_test extends \advanced_testcase {
         // A later invocation at the installed version cannot reset manual decisions.
         $id = array_key_first($before);
         $DB->set_field('tupmeet_recordings', 'studentvisible', 0, ['id' => $id]);
-        $this->assertTrue(xmldb_tupmeet_upgrade(2026092101));
+        $this->assertTrue(xmldb_tupmeet_upgrade(2026092200));
         $this->assertEquals(0, $DB->get_field('tupmeet_recordings', 'studentvisible', ['id' => $id]));
         $xml = new \xmldb_file(__DIR__ . '/../db/install.xml');
         $this->assertTrue($xml->loadXMLStructure());

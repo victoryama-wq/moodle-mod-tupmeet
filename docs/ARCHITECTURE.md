@@ -179,4 +179,13 @@ The site-config-only health_service uses bounded local projections, SQL aggregat
 
 The PoC route, namespace, form and cache definition are removed; historical documentation is retained. The only schema change is publicationmode DEFAULT automatic with a structural XMLDB upgrade preserving existing values. See [Phase 6A](PHASE6A.md) for the security matrix, timestamps, task thresholds and recovery coverage.
 
-Future Phase 6B is a one-time CSV migration into separate legacy recording metadata, with no fake conferenceRecords and no direct reads of mod_googlemeet. Videos remain in Drive, without required rename, moving or permission changes. Session-name matching will strip (####) and use date/time/Recording 2 for session/part reconstruction. This is a design decision only: no importer, parser or legacy table is implemented.
+## Phase 6B historical references
+
+CSV data is normalized externally; the plugin does not parse historical Google names.
+The bounded validator and session-bound importer resolve exact Meet-first destinations,
+preview without writes and revalidate under locks before a single local transaction.
+A separate tupmeet_legacy_recordings table has unique Drive identity, no synthetic Meet
+resources and no dependency on the legacy plugin. Academic rendering combines both
+sources with SQL visibility filters and bounded pagination. Explicit legacy eye actions,
+count-only audit and independent Privacy attribution never contact Google or alter Drive.
+See [Phase 6B](PHASE6B.md) for schema, TTL, security and limitations.

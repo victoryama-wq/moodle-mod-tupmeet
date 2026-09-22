@@ -2,6 +2,14 @@
 
 TUP Meet is an institutional Moodle activity module intended to create and manage Google Meet sessions from Moodle while maintaining institutional control of the organizer account and recording history.
 
+## Phase 6B — historical CSV references
+
+Version **2026092200 / 0.8.3-alpha** adds a site-admin CSV preview/importer and a
+separate historical-reference table combined with native recordings in the academic
+catalog. Explicit visibility, local audit and privacy attribution are supported.
+No Google requests or Drive mutations occur in this migration. See [Phase 6B](docs/PHASE6B.md)
+for the CSV format, strict matching, confirmation, limitations and pending smoke.
+
 ## Phase 6A — operational hardening and local diagnostics
 
 Version **2026092101 / 0.8.2-alpha** adds a site-config-only system dashboard using stored local evidence, removes the experimental PoC and aligns the structural publication default with automatic. Existing activity preferences and the academic/Google flows are preserved. See [Phase 6A](docs/PHASE6A.md) for security, task thresholds, validation and the pending staging smoke.

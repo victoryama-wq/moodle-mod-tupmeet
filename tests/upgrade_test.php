@@ -190,7 +190,7 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertEquals(0, $after->meetconfigmodified);
         $this->assertEquals(1, $DB->get_field('tupmeet_accounts', 'isdefault', ['id' => $accountid]));
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
-        $this->assertEquals(2026092101, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026092200, get_config('mod_tupmeet', 'version'));
     }
     /**
      * A Phase 3 upgrade preserves all known metadata and never selects or synchronizes a teacher.
@@ -228,7 +228,7 @@ final class upgrade_test extends \advanced_testcase {
         $this->assertEquals(0, $after->cohostattempts);
         $this->assertEquals(0, $after->cohostmodified);
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
-        $this->assertEquals(2026092101, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026092200, get_config('mod_tupmeet', 'version'));
     }
     /**
      * Diagnostic upgrade preserves the failed locked teacher and every existing meeting field.
@@ -258,7 +258,7 @@ final class upgrade_test extends \advanced_testcase {
         }
         $this->assertSame('unknown', $after->cohosterrorstage);
         $this->assertEquals(0, $after->cohosthttpstatus);
-        $this->assertEquals(2026092101, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026092200, get_config('mod_tupmeet', 'version'));
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
     }
 
@@ -296,7 +296,7 @@ final class upgrade_test extends \advanced_testcase {
             $this->assertSame('legacy', $after->spaceversion);
             $this->assertEquals(0, $after->spaceattempts);
         }
-        $this->assertEquals(2026092101, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026092200, get_config('mod_tupmeet', 'version'));
         $this->assertEquals(0, $DB->count_records('task_adhoc', ['component' => 'mod_tupmeet']));
     }
 
@@ -319,7 +319,7 @@ final class upgrade_test extends \advanced_testcase {
         set_config('version', 2026092100, 'mod_tupmeet');
         $tasks = $DB->get_records('task_adhoc');
         $this->assertTrue(xmldb_tupmeet_upgrade(2026092100));
-        $this->assertEquals(2026092101, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026092200, get_config('mod_tupmeet', 'version'));
         foreach ($before as $id => $record) {
             $this->assertEquals($record, $DB->get_record('tupmeet', ['id' => $id]));
         }
