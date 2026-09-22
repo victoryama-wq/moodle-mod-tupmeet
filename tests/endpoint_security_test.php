@@ -38,13 +38,15 @@ final class endpoint_security_test extends \advanced_testcase {
     #[\PHPUnit\Framework\Attributes\DataProvider('routes')]
     public function test_route_guards(string $file, string $capability, string $boundary, bool $mutation): void {
         $code = file_get_contents(dirname(__DIR__) . '/' . $file);
-        $login = strpos($code, 'require_login(');
-        $cap = strpos($code, "require_capability('" . $capability . "'");
+        $login = strpos($code, $capability === '' ? 'require_course_login(' : 'require_login(');
+        $cap = $capability === '' ? $login : strpos($code, "require_capability('" . $capability . "'");
         $operation = strpos($code, $boundary);
         $this->assertNotFalse($login);
         $this->assertNotFalse($cap);
         $this->assertNotFalse($operation);
-        $this->assertLessThan($cap, $login);
+        if ($capability !== '') {
+            $this->assertLessThan($cap, $login);
+        }
         $this->assertLessThan($operation, $cap);
         if ($mutation) {
             $this->assertLessThan($operation, strpos($code, 'require_sesskey()'));
@@ -62,6 +64,9 @@ final class endpoint_security_test extends \advanced_testcase {
             ['accounts.php', 'moodle/site:config', "$" . 'manager->verify(', true],
             ['retry.php', 'moodle/course:manageactivities', 'space_manager::retry(', true],
             ['health.php', 'moodle/site:config', 'health_service::snapshot(', false],
+            ['legacy.php', 'moodle/site:config', 'importer::confirm(', false],
+            ['recordings.php', 'mod/tupmeet:view', 'actions::execute(', false],
+            ['index.php', '', 'get_all_instances_in_course(', false],
         ];
     }
 

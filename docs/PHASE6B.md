@@ -1,5 +1,19 @@
 # Fase 6B — migración histórica de grabaciones por CSV
 
+## Cierre posterior a la implementación
+
+Base aprobada: `ce2408587bc6068adcf53d837dc09ef75e8589b4`.
+[CI remoto 35767723395](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35767723395):
+QUALITY y las tres versiones PASS; Moodle 4.5 **482 pruebas / 7848 aserciones**,
+Moodle 5.0 y 5.1 **482 / 7849** cada una. Esto reemplaza el conteo local parcial de 481
+que aparece en la evidencia original, anterior al último caso añadido.
+
+Al autorizar Fase 7, el propietario confirmó smoke real staging aprobado hasta Fase 6B, incluyendo
+CSV, idempotencia, visibilidad legacy y cronología combinada. Es evidencia del propietario;
+no se volvió a importar un CSV real ni a llamar a Google durante Fase 7.
+La sección “Smoke posterior (no ejecutado)” siguiente conserva su estado histórico original.
+La validación del nuevo RC se separa en [PHASE7](PHASE7.md).
+
 ## Base y alcance
 
 - Rama: `codex/fase-6b-legacy-csv`.

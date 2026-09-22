@@ -1,5 +1,9 @@
 # Fase 6A — hardening operativo y diagnóstico local
 
+> Documento histórico: CI y auditoría remota 6A fueron aprobados, y el propietario confirmó staging
+> hasta Fase 6B. La migración descrita aquí como futura ya existe en [Fase 6B](PHASE6B.md), con
+> normalización externa del CSV. El estado actual del RC está en [Fase 7](PHASE7.md).
+
 ## Base y alcance
 
 - Base: `codex/fase-5-1-ui-polish`, `fe901de7edb8f8c3674649b8c623204598d144a7`.

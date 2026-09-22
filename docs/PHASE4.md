@@ -1,5 +1,9 @@
 # Fase 4 — descubrimiento y renombrado de grabaciones
 
+> Documento histórico: conserva el estado al implementar Fase 4. El propietario aprobó posteriormente
+> el smoke real de staging hasta Fase 6B, incluido descubrimiento y rename. Los “pendientes” de smoke
+> aquí son históricos. El RC y sus límites actuales se documentan en [Fase 7](PHASE7.md).
+
 ## Alcance y evidencia
 
 Versión **2026091900 / 0.7.0-alpha**. Rama **codex/fase-4-recordings**.

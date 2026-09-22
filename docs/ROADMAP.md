@@ -1,5 +1,26 @@
 # Delivery roadmap
 
+## Estado vigente — Fase 7
+
+**0.9.0-rc1 / 2026092201**: Release Candidate y preparación de piloto, con feature freeze.
+La base Fase 6B tiene CI remoto y smoke staging aprobados por el propietario.
+Fase 7 aporta auditoría, instalación limpia, upgrade metadata-only, matriz de seguridad y guías operativas;
+no añade funciones, esquema, scopes ni cambia la política de retry Calendar.
+
+Siguiente etapa: validación remota del RC y smoke específico, ambos autorizados separadamente;
+después, [piloto institucional](PILOT.md) de 3–5 asignaturas por 1–2 semanas.
+Proponer **1.0.0 solo si se cumplen sus criterios observables** y los responsables lo aprueban.
+Merge, deploy y release no se derivan automáticamente de esa propuesta.
+
+Attendance, recuperación de transcripciones, participantes, analytics, multi-COHOST,
+backup/restore nativo y búsqueda de carpetas Drive quedan fuera del RC y del piloto.
+No se inicia una nueva fase de funciones en este trabajo.
+
+## Historial del plan original
+
+Los estados siguientes describen lo previsto o conocido al redactar cada fase, no pendientes actuales.
+La evidencia vigente del RC está en [PHASE7](PHASE7.md).
+
 ## Phase 0 — architecture baseline
 
 Status: initial implementation.

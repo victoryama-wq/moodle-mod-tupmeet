@@ -1,64 +1,110 @@
 # TUP Meet (`mod_tupmeet`)
 
-TUP Meet is an institutional Moodle activity module intended to create and manage Google Meet sessions from Moodle while maintaining institutional control of the organizer account and recording history.
+Actividad Moodle para clases por Google Meet con propietario institucional configurable,
+Calendar, coorganizador docente y una cronología académica de grabaciones nuevas e históricas.
 
-## Phase 6B — historical CSV references
+## Estado actual
 
-Version **2026092200 / 0.8.3-alpha** adds a site-admin CSV preview/importer and a
-separate historical-reference table combined with native recordings in the academic
-catalog. Explicit visibility, local audit and privacy attribution are supported.
-No Google requests or Drive mutations occur in this migration. See [Phase 6B](docs/PHASE6B.md)
-for the CSV format, strict matching, confirmation, limitations and pending smoke.
+**0.9.0-rc1 · 2026092201 · MATURITY_RC.** Fase 7 prepara el piloto con feature freeze:
+auditoría, validaciones y documentación; sin nuevas funciones ni cambios de esquema respecto de 0.8.3-alpha.
 
-## Phase 6A — operational hardening and local diagnostics
+La base Fase 6B cuenta con CI remoto aprobado y smoke real de staging confirmado por el propietario,
+incluyendo Meet-first, artifacts, grabaciones/publicación y CSV idempotente.
+La validación remota específica del RC, su smoke y el piloto son etapas separadas pendientes de autorización.
+Este RC no es una publicación estable 1.0 ni un despliegue realizado.
 
-Version **2026092101 / 0.8.2-alpha** adds a site-config-only system dashboard using stored local evidence, removes the experimental PoC and aligns the structural publication default with automatic. Existing activity preferences and the academic/Google flows are preserved. See [Phase 6A](docs/PHASE6A.md) for security, task thresholds, validation and the pending staging smoke.
+## Funciones disponibles
 
-## Preserved Phase 5 — academic experience and local publication
+- Cuenta maestra mediante OAuth2 **nativo de Moodle**: identidad verificada, predeterminada única,
+  reconexión y cuentas históricas. Cada actividad conserva su `accountid` original.
+- Nuevas actividades **Meet-first**: un Space permanente y mismo enlace para toda la serie;
+  estado independiente de Calendar, COHOST y artifacts. Resultado ambiguo de creación: revisión manual.
+- Evento Calendar nativo con el mismo Meet, docente attendee y `sendUpdates=all`.
+  Edición de horario/título/recurrencia conserva identidades. Repetición semanal con fecha final inclusiva y zona guardada.
+- Un docente COHOST validado en servidor y bloqueado tras guardar. Grabación automática y preferencia
+  de transcripción con estados independientes (sin recuperación de transcripciones).
+- Descubrimiento de conferenceRecords/recordings y metadata `FILE_GENERATED`, polling acotado y
+  rename del nombre del MP4. Sin descarga, cambio de propietario, carpetas o permisos Drive.
+- Publicación automática/manual, ojo mostrar/ocultar local, filtrado de visibilidad en servidor,
+  próxima sesión y UI académica separada del diagnóstico técnico.
+- Estado del sistema local para administración: cuenta configurada, estados, cron y tareas.
+- Migración CSV administrativa: preview, confirmación revalidada, matching exacto, deduplicación,
+  tabla histórica separada y cronología native + legacy; no realiza llamadas Google.
+- Idiomas `en`, `es` y `es_mx`; Privacy para identidades y atribución de acciones locales.
 
-Version **2026091901 / 0.8.0-alpha** presents the next session and a responsive class-recording table. New activities default to automatic publication: newly discovered recordings are initially visible. Teachers can show/hide each recording using Moodle's eye control; subsequent discovery or preference edits preserve individual decisions. Technical diagnostics remain in a separate manager-only panel. See [Phase 5](docs/PHASE5.md) for the upgrade policy, privacy, access boundary and staging checklist.
+## Requisitos
 
-Phase 4's discovery, polling and metadata-only rename are preserved; its real automatic-discovery/rename smoke was confirmed by the owner. Existing Drive/OAuth setup and scopes remain unchanged. Moodle controls link visibility, not Drive permissions: another institutional reader with a shared link may still access the recording directly. There is no media download, permission/folder change or transcript retrieval.
+Moodle **4.5 LTS, 5.0 o 5.1**, PHP **8.3** en la matriz probada, HTTPS y cron CLI cada minuto.
+Validación local con MariaDB 10.11. Google Workspace con licencia/política compatible, cuenta institucional
+y APIs **Google Calendar**, **Google Meet REST** y **Google Drive** habilitadas.
+No se hardcodea una cuenta institucional ni se almacenan tokens en tablas propias.
 
-## Preserved Phase 3.4 — Meet-first for new activities
+Scopes actuales (sin ampliación en RC): `calendar.events.owned`, `meetings.space.settings`,
+`meetings.space.created`, `meetings.space.readonly`, `drive.metadata`, además de identidad nativa Moodle.
+La [guía de instalación](docs/PRODUCTION_INSTALL.md) incluye las URI completas, callback y conexión.
 
-Version `2026091802` (`0.6.1-alpha`) retains the Meet-first workflow and expresses recurrence `UNTIL` at the start time on the final local date. See [Phase 3.4.1](docs/PHASE3_4_1.md) for this limited hardening and the approved Meet-first smoke, and [Phase 3.4](docs/PHASE3_4.md) for the workflow, upgrade and independent states.
+## Instalación y administración
 
-- Every new activity creates one Meet REST Space, persists its canonical name/URI/code, and independently reconciles the teacher COHOST, automatic artifacts and a native Calendar event using that same Meet.
-- Calendar invitations include the server-validated teacher and use `sendUpdates=all`. A subsequent GET must confirm the event, conference and attendee before Calendar becomes ready.
-- One Space serves the whole recurring series. Name/schedule edits update Calendar; recording/transcription edits configure the same Space.
-- Join remains available when Space is ready even if Calendar fails. Students do not see technical diagnostics.
-- Space creation is not safely repeatable after an ambiguous response: timeout/transport failure requires manual review, without a second automatic POST. Explicit HTTP 429 uses backoff; normal creation has no fixed throttle.
-- Historical activities retain `calendar` or `legacy` mode, owner and identifiers. They are not migrated and no longer automatically write COHOST membership on Calendar-created Spaces; existing manual assignments remain.
-- Account administration remains under Site administration > Plugins > Activity modules > TUP Meet, using native Moodle OAuth2 and one verified enabled default for new activities.
-- Credentials/tokens remain in Moodle OAuth2. Local deletion never deletes Google events, Spaces, Members or recordings.
+Seguir [PRODUCTION_INSTALL](docs/PRODUCTION_INSTALL.md): respaldo coherente, ventana de mantenimiento,
+**reemplazo limpio** de `tupmeet/`, Notificaciones/upgrade, cachés, OAuth/identidad, cron, Health y smoke autorizado.
+En Moodle 5.1 el directorio web es normalmente `public/`; respetar el layout del sitio.
+No sobreponer archivos que puedan dejar rutas PoC antiguas.
 
-The experimental PoC was removed in Phase 6A. Its [historical evidence](docs/PHASE3_3_POC.md) remains; replace the plugin directory and purge Moodle caches when upgrading so removed PHP files cannot remain accessible.
+Administración del sitio → Plugins → Módulos de actividad → TUP Meet:
+**Cuentas maestras**, **Estado del sistema**, **Migración histórica**.
+Cambiar la cuenta predeterminada afecta únicamente a actividades nuevas.
 
-Phase 4 provides recording discovery and Drive filename updates. Phase 5 adds local academic visibility independently of rename success. Artifact creation depends on Workspace licensing/policies and a privileged participant joining; configuration readiness is not evidence that a recording exists.
+## Seguridad y límites
 
-Historical design/evidence: [Phase 1](docs/PHASE1.md), [Phase 2](docs/PHASE2.md), [Phase 2 smoke](docs/PHASE2_SMOKE.md), [Phase 3](docs/PHASE3.md), [Phase 3.2](docs/PHASE3_2.md), [Phase 3.2.1](docs/PHASE3_2_1.md), [Phase 4](docs/PHASE4.md). Current behavior combines Phase 3.4, Phase 4 and Phase 5. [Continuous integration](docs/CI.md) retains QUALITY and Moodle 4.5/5.0/5.1 PHPUnit jobs; local tests do not imply remote validation.
+- Administración global: `moodle/site:config`; gestión de actividad: `moodle/course:manageactivities`.
+  Mutaciones por POST + sesskey, contexto y pertenencia comprobados en servidor.
+- Estudiantes no reciben filas ocultas ni diagnóstico técnico. Visibilidad Moodle **no equivale** a permisos Drive.
+- Tokens/client credentials se administran en Moodle core, nunca en el repositorio o tablas TUP Meet.
+- No borrado externo al eliminar actividad; no retry ciego de `spaces.create` incierto.
+- Calendar conserva backoff Moodle sin presupuesto finito propio; requiere seguimiento operativo.
+- Sin backup/restore nativo de actividad, attendance, analytics, multi-COHOST ni recuperación de transcripciones.
 
-## Master-account principle
+Impacto y mitigación: [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md).
+La [matriz de endpoints y auditoría](docs/PHASE7.md) distingue permisos, HTTP y escrituras locales de Moodle.
 
-The organizer account must never be hard-coded. Each activity retains the account identifier used when it was created. Changing the default master account affects only new activities. Moodle stores one system account per issuer, so each replacement institutional account needs a separate issuer. Reconnection must authorize the original Google identity. The plugin checks both its stable OpenID subject and verified email.
+## Documentación vigente
 
-Registering/verifying an account does not automatically select it as default: the administrator must first inspect the email. With no enabled verified default, new activity creation is blocked. Existing Phase 0 activities with `accountid = 0` remain unassigned; this phase does not infer or migrate their ownership.
+| Documento | Uso |
+|---|---|
+| [CHANGELOG](CHANGELOG.md) | Funcionalidad consolidada del RC |
+| [PRODUCTION_INSTALL](docs/PRODUCTION_INSTALL.md) | Instalación, actualización y OAuth |
+| [ROLLBACK](docs/ROLLBACK.md) | Contención y recuperación coherente, sin downgrade DB |
+| [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md) | Riesgos y mitigaciones |
+| [ADMIN_RUNBOOK](docs/ADMIN_RUNBOOK.md) | Diagnóstico y controles existentes |
+| [TEACHER_GUIDE](docs/TEACHER_GUIDE.md) | Operación cotidiana docente |
+| [PILOT](docs/PILOT.md) | Plan y criterios, todavía sin ejecución |
+| [PHASE7](docs/PHASE7.md) | Auditoría, pruebas y evidencia del RC |
+| [ARCHITECTURE](docs/ARCHITECTURE.md) | Límites e invariantes |
+| [ROADMAP](docs/ROADMAP.md) | RC → piloto autorizado → posible 1.0 |
+| [CI](docs/CI.md) | QUALITY y matriz Moodle |
+| [PHASE6B](docs/PHASE6B.md) | Contrato y límites de CSV histórico |
 
-## Installation for a development Moodle
+Los documentos `PHASE*` conservan evidencia del momento original; sus notas de cierre distinguen validaciones
+posteriores. No interpretar un “pendiente” histórico como estado actual ni un CI de la base como CI del RC.
 
-Copy the plugin directory as:
+## Validación y empaquetado reproducible
 
-```text
-<Moodle code root>/mod/tupmeet
+Suite: `mod_tupmeet_testsuite` sobre las tres versiones Moodle, sin Google real.
+Se conservan los **482 casos base**, más cobertura RC de metadata/instalación y guardas de rutas.
+Los comandos y resultados están en [PHASE7](docs/PHASE7.md).
+
+Auditar fuentes sin crear ZIP (Python 3 + Git):
+
+```sh
+python3 tools/audit_package.py --worktree
+python3 tools/audit_package.py --ref HEAD
 ```
 
-For Moodle 5.1+, the Moodle codebase is normally under the `public` directory, so the effective location can be:
+El primer comando incluye cambios pendientes no ignorados; el segundo lee blobs del commit indicado.
+Verifican rutas, patrones de secretos y enlaces relativos; la revisión humana de fixtures y secretos sigue siendo necesaria.
+La Fase 7 **no genera paquete**. Un empaquetado posterior autorizado usará exclusivamente un commit aprobado,
+raíz `tupmeet/`, revisión del contenido y SHA256; excluir `.git`, dependencias locales, datos, secretos y resultados de tests.
 
-```text
-<Moodle root>/public/mod/tupmeet
-```
+## Licencia
 
-Then visit **Site administration > Notifications** and complete the plugin installation.
-
-Do not install this alpha package directly in production before validating it in a clone/staging environment.
+GNU GPL v3 o posterior, según encabezados del código.

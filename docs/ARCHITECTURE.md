@@ -1,5 +1,9 @@
 # TUP Meet architecture
 
+Current contract: **0.9.0-rc1**, feature freeze over Phase 6B. The phase sections below
+record the evolution of the system; newer sections supersede older phase-specific prerequisites.
+See [Phase 7](PHASE7.md) for the endpoint/task audit and [known limitations](KNOWN_LIMITATIONS.md).
+
 ## Goal
 
 Provide an institutional Google Meet activity for Moodle that preserves the simple teacher workflow of the legacy plugin while replacing folder-based recording discovery with supported Google APIs.
@@ -35,14 +39,16 @@ Responsibilities:
 - Create the calendar event.
 - Configure start/end date and time.
 - Configure recurrence rules.
-- Request Google Meet conference data.
+- Attach the existing Meet-first Space as native conference data for new activities.
+  Only historical `provisionmode=calendar` retains Calendar conference creation requests.
 - Update the event when the Moodle activity schedule is changed.
 
 ### Google Meet REST API
 
 Responsibilities:
 
-- Resolve the Meet space/conference.
+- Create and retain the canonical Meet-first Space; resolve historical spaces when applicable.
+- Configure the single validated teacher COHOST on Meet-first spaces.
 - Configure supported meeting artifacts such as automatic recording when available for the Workspace edition/account.
 - Retrieve conference records.
 - Retrieve recordings and their Drive destination/export URI.
@@ -51,6 +57,8 @@ Responsibilities:
 ### Google Drive
 
 Drive is the physical destination for recordings but **folder names must not be used as the primary synchronization mechanism**.
+The metadata service reads only validated recording destinations and PATCHes `name` only;
+it never changes permissions, parents, ownership or media content.
 
 ## Moodle layers
 
@@ -69,7 +77,8 @@ mod_tupmeet
   Moodle persistence
         +--> tupmeet
         +--> tupmeet_accounts
-        +--> future conferences / recordings / sync log tables
+        +--> tupmeet_conferences / tupmeet_recordings
+        +--> tupmeet_legacy_recordings (CSV references only)
 ```
 
 ## Phase 0 schema
@@ -189,3 +198,12 @@ resources and no dependency on the legacy plugin. Academic rendering combines bo
 sources with SQL visibility filters and bounded pagination. Explicit legacy eye actions,
 count-only audit and independent Privacy attribution never contact Google or alter Drive.
 See [Phase 6B](PHASE6B.md) for schema, TTL, security and limitations.
+
+## Phase 7 release candidate boundary
+
+No functional, schema, data, scope or task-policy changes. `version.php` declares
+`2026092201 / 0.9.0-rc1 / MATURITY_RC`; XMLDB and the latest plugin upgrade step remain
+at `2026092200`. Moodle advances installed version metadata after the no-op upgrade path.
+The RC test invokes Moodle's updater and compares all rows of all five plugin tables.
+Native activity backup/restore remains unsupported. See [production installation](PRODUCTION_INSTALL.md)
+and [rollback](ROLLBACK.md); restoring Moodle does not roll back Google resources.

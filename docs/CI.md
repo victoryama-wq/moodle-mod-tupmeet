@@ -1,5 +1,15 @@
 # Integración continua de TUP Meet
 
+## Estado vigente
+
+El workflow heredado se conserva sin cambios en Fase 7. La última base aprobada, Fase 6B
+(`ce2408587bc6068adcf53d837dc09ef75e8589b4`), completó
+[Actions 35767723395](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35767723395)
+con QUALITY y PHPUNIT 4.5/5.0/5.1 exitosos: 482 pruebas por versión.
+El RC tiene validación local propia; su CI remoto espera un push autorizado.
+“Primer push pendiente” y 0.2.0-alpha más abajo corresponden exclusivamente a la incorporación original
+de infraestructura; no describen el estado vigente. Véase [PHASE7](PHASE7.md).
+
 ## Alcance y estado inicial
 
 El workflow [TUP Meet CI](../.github/workflows/ci.yml) valida `mod_tupmeet` con datos desechables y la frontera Google simulada de Fase 1. Esta incorporación cambia infraestructura y documentación; conserva la lógica, OAuth, esquema XMLDB y versión `2026091500` / `0.2.0-alpha`.

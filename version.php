@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'mod_tupmeet';
-$plugin->version = 2026092200;
+$plugin->version = 2026092201;
 $plugin->requires = 2024100700; // Moodle 4.5.0 or later.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.8.3-alpha';
+$plugin->maturity = MATURITY_RC;
+$plugin->release = '0.9.0-rc1';

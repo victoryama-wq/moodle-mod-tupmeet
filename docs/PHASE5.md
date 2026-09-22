@@ -1,5 +1,9 @@
 # Fase 5 — experiencia académica y publicación local
 
+> Documento histórico: Fase 5 y el pulido 5.1 fueron validados posteriormente en staging por el propietario;
+> el alcance aprobado hasta Fase 6B incluye publicación, ojo y UX native + legacy. Las referencias a smoke
+> pendiente describen el estado original. Para el RC vigente consultar [Fase 7](PHASE7.md).
+
 ## Base y evidencia
 
 - Rama: codex/fase-5-ui-publication.
