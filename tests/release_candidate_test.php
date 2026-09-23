@@ -29,8 +29,12 @@ defined('MOODLE_INTERNAL') || die();
 final class release_candidate_test extends \advanced_testcase {
     /**
      * The core updater must preserve every plugin field, including historical and hidden rows.
+     *
+     * @dataProvider previous_versions
+     * @param int $previousversion Installed version before the metadata upgrade
      */
-    public function test_metadata_upgrade_preserves_all_five_tables(): void {
+    #[\PHPUnit\Framework\Attributes\DataProvider('previous_versions')]
+    public function test_metadata_upgrade_preserves_all_five_tables(int $previousversion): void {
         global $CFG, $DB;
         require_once($CFG->libdir . '/upgradelib.php');
         $this->resetAfterTest();
@@ -83,18 +87,27 @@ final class release_candidate_test extends \advanced_testcase {
             $before[$table] = $DB->get_records($table, [], 'id');
         }
         $tasksbefore = $DB->get_records('task_adhoc', ['component' => 'mod_tupmeet'], 'id');
-        set_config('version', 2026092200, 'mod_tupmeet');
+        set_config('version', $previousversion, 'mod_tupmeet');
         $upgraded = [];
         upgrade_plugins_modules(static function ($component, $install) use (&$upgraded): void {
             $upgraded[$component] = $install;
         }, static function (): void {
         }, false);
         $this->assertSame(['mod_tupmeet' => false], $upgraded);
-        $this->assertEquals(2026092201, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026092202, get_config('mod_tupmeet', 'version'));
         foreach ($before as $table => $rows) {
             $this->assertEquals($rows, $DB->get_records($table, [], 'id'), $table);
         }
         $this->assertEquals($tasksbefore, $DB->get_records('task_adhoc', ['component' => 'mod_tupmeet'], 'id'));
+    }
+
+    /**
+     * Exercise both the previous alpha and RC1 upgrade paths.
+     *
+     * @return array Metadata-only upgrade origins retained for RC2
+     */
+    public static function previous_versions(): array {
+        return ['alpha' => [2026092200], 'rc1' => [2026092201]];
     }
 
     /**
@@ -106,7 +119,7 @@ final class release_candidate_test extends \advanced_testcase {
         $plugin = new \stdClass();
         require(__DIR__ . '/../version.php');
         $this->assertSame(MATURITY_RC, $plugin->maturity);
-        $this->assertSame('0.9.0-rc1', $plugin->release);
+        $this->assertSame('0.9.0-rc2', $plugin->release);
         $this->assertEquals($plugin->version, get_config('mod_tupmeet', 'version'));
         $file = new \xmldb_file(__DIR__ . '/../db/install.xml');
         $this->assertTrue($file->loadXMLStructure());

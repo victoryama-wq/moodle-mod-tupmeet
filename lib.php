@@ -53,6 +53,22 @@ function tupmeet_supports($feature) {
 }
 
 /**
+ * Expose the native Moodle content item in the Activity Chooser.
+ *
+ * @param \core_course\local\entity\content_item $defaultitem Item supplied by Moodle
+ * @param \stdClass $user User adding course content
+ * @param \stdClass $course Target course
+ * @return \core_course\local\entity\content_item[] The unchanged default item
+ */
+function tupmeet_get_course_content_items(
+    \core_course\local\entity\content_item $defaultitem,
+    \stdClass $user,
+    \stdClass $course
+): array {
+    return [$defaultitem];
+}
+
+/**
  * Create a local activity with the configured institutional owner.
  *
  * @param stdClass $data Activity data

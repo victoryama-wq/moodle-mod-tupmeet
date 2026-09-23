@@ -38,6 +38,31 @@ final class language_test extends \advanced_testcase {
     }
 
     /**
+     * Each bundled language provides chooser information without fallback or an invented help link.
+     *
+     * @dataProvider chooser_languages
+     * @param string $language Language code
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('chooser_languages')]
+    public function test_activity_chooser_strings(string $language): void {
+        $catalogue = $this->catalogue($language);
+        foreach (['modulename_help', 'modulename_summary'] as $key) {
+            $this->assertArrayHasKey($key, $catalogue);
+            $this->assertNotSame('', trim($catalogue[$key]));
+        }
+        $this->assertArrayNotHasKey('modulename_link', $catalogue);
+    }
+
+    /**
+     * List the bundled languages without relying on Moodle language fallback.
+     *
+     * @return array Bundled languages
+     */
+    public static function chooser_languages(): array {
+        return [['en'], ['es'], ['es_mx']];
+    }
+
+    /**
      * Both Spanish catalogues must include a nonempty translation of every English identifier.
      */
     public function test_spanish_catalogues_cover_english(): void {
