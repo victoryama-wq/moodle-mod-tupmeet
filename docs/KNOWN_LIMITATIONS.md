@@ -1,4 +1,4 @@
-# Limitaciones conocidas del RC
+# Limitaciones conocidas de TUP Meet 1.0.0
 
 | Limitación | Impacto y mitigación |
 |---|---|
@@ -18,8 +18,8 @@
 | Cuenta histórica fija | Cambiar la predeterminada solo afecta nuevas actividades. Hay que mantener acceso al issuer/cuenta histórica; reconectar con otra identidad se rechaza |
 | Dependencia de licencia y procesamiento Google | OAuth concedido no garantiza disponibilidad de artifacts ni tiempo de procesamiento. Verificar licencia/políticas y esperar `FILE_GENERATED`; no prometer publicación inmediata |
 | Health es local | No prueba OAuth vigente ni Google en vivo. Sus fechas son evidencia de operaciones anteriores; el contador de visibilidad se refiere a grabaciones nativas. Validar histórico legacy en su catálogo académico |
-| Límites operativos deliberados | Discovery/rename seleccionan lotes de 25; paginación Google acotada y leases protegen la cola. Grandes cargas pueden tardar; este RC no certifica carga masiva ni cuotas institucionales |
-| Matriz validada acotada | Moodle 4.5/5.0/5.1, PHP 8.3 y MariaDB 10.11. Otros motores, versiones y temas necesitan validación propia; RC no es aún 1.0 estable |
+| Límites operativos deliberados | Discovery/rename seleccionan lotes de 25; paginación Google acotada y leases protegen la cola. Grandes cargas pueden tardar; 1.0.0 no certifica carga masiva ni cuotas institucionales |
+| Matriz validada acotada | Moodle 4.5/5.0/5.1, PHP 8.3 y MariaDB 10.11. Otros motores, versiones y temas necesitan validación propia; la promoción a estable no amplía la matriz probada |
 
 Fuentes oficiales para las condiciones externas: [scopes Drive](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
 y [retención de conferenceRecords](https://developers.google.com/workspace/meet/api/reference/rest/v2/conferenceRecords).

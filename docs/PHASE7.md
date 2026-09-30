@@ -1,5 +1,8 @@
 # Fase 7 — Release Candidate y preparación del piloto
 
+> Registro histórico de preparación RC. El estado posterior aprobado se documenta en
+> «Cierre posterior: RC2, piloto y 1.0.0» al final; los pendientes originales no son el estado vigente.
+
 ## Alcance, base y evidencia
 
 - Base exacta: `codex/fase-6b-legacy-csv`, `ce2408587bc6068adcf53d837dc09ef75e8589b4`, árbol limpio al iniciar.
@@ -222,3 +225,55 @@ Riesgos abiertos: Calendar persistente, resultados Space inciertos, permisos Dri
 fuera de Moodle, retención/procesamiento/licencias y falta de backup/restore por actividad, detallados en limitaciones.
 No se efectuaron merge, deploy, instalación en producción, release publicado, piloto, CSV real,
 llamadas autenticadas a Google ni cambios Drive.
+
+## Cierre posterior: RC2, piloto y 1.0.0
+
+Base de la promoción estable: `codex/rc2-activity-chooser`,
+`78b67f5849db3abc9f03163c4ddce7127bddd29c`, versión `2026092202 / 0.9.0-rc2 / MATURITY_RC`.
+CI remoto RC2 aprobado: [TUP Meet CI #35802454671](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35802454671).
+QUALITY PASS; Moodle 4.5: 494 pruebas / 8065 aserciones; Moodle 5.0 y 5.1: 494 / 8066 cada uno, PASS.
+
+El propietario confirmó posteriormente instalación/upgrade y smoke productivo de RC2:
+OAuth institucional, cuenta maestra/issuer dedicado, Meet-first, Calendar/recurrencia, COHOST,
+artifactConfig/grabación, conferenceRecords/recordings/FILE_GENERATED, discovery, rename,
+publicación/visibilidad/acceso estudiante, cron cada 5 minutos, cola ad hoc y Health.
+Activity Chooser, favoritos e información también fueron aprobados en ese smoke;
+la estrella queda validada por evidencia manual, no por una causa reproducida en PHPUnit.
+Piloto de 3 asignaturas reales completado sin incidencias funcionales bloqueantes;
+conclusión y límites en [PILOT](PILOT.md). No se registran datos institucionales identificables.
+
+Promoción en `codex/release-1-0-0`: **2026092900 / 1.0.0 / MATURITY_STABLE**,
+fecha de versión 2026-09-29. Se conserva `requires=2024100700` y el esquema/último savepoint `2026092200`.
+Solo metadata, documentación y expectativas/cobertura de metadata; ningún cambio funcional,
+DB, scopes, Activity Chooser, tareas o CI. Se mantienen los 494 casos y se añade el origen RC2
+al test del actualizador real: snapshots completos de cinco tablas y tareas ad hoc conservados.
+El CI citado es de RC2; una validación remota del nuevo commit estable sería una operación posterior.
+
+La migración usa exclusivamente el CSV existente, sin nuevas herramientas ni modificación de
+`mod_googlemeet`. La siguiente etapa es el despliegue progresivo autorizado; esta preparación
+no ejecuta push, merge, deploy, ZIP, release, importación real ni cambios de producción.
+
+### Validación local de 1.0.0 — 2026-09-30
+
+Entorno local desechable: PHP 8.3.33, MariaDB 10.11.14 y Google simulado.
+Inicialización de PHPUnit completada con exit 0 en los tres cores; sin warnings ni errores fatales.
+
+| Moodle | PHPUnit | Pruebas | Aserciones | Resultado |
+|---|---|---:|---:|---|
+| 4.5.14, build 20260914 | 9.6.34 | 495 | 8073 | PASS |
+| 5.0.10, build 20260914 | 11.5.55 | 495 | 8074 | PASS |
+| 5.1.7, build 20260914 | 11.5.55 | 495 | 8074 | PASS |
+
+Suite completa `mod_tupmeet_testsuite` con fallo ante warnings, risky, incomplete y skipped;
+en PHPUnit 11 también ante notices y deprecations de PHPUnit. No se eliminó ningún caso.
+El incremento de 494 a 495 corresponde exclusivamente al origen RC2 del upgrade de metadata:
+las cinco tablas y la cola ad hoc del plugin quedan idénticas, incluidos propietarios,
+Space/Calendar/Meet URI, COHOST, visibilidad, referencias legacy y Drive IDs sintéticos.
+
+PHPCS: cero errores/warnings. Sintaxis: 100 archivos PHP PASS. XMLDB: manifest instalado,
+cinco tablas/campos/índices comprobados por la suite, sin cambios de esquema.
+Estructura y 10 savepoints históricos coincidentes/ordenados: PASS.
+`git diff --check` y `audit_package.py --worktree`: PASS (136 archivos, 92 enlaces relativos).
+Escaneo de patrones y revisión del diff sin secretos, CSV institucionales ni identificadores privados.
+El diff frente a RC2 contiene solo documentación, `version.php` y metadata del test de release.
+Estos resultados son locales; no sustituyen un CI remoto del futuro commit estable.

@@ -1,5 +1,12 @@
 # Plan de piloto institucional
 
+**Estado vigente: piloto completado satisfactoriamente para el alcance probado.**
+El propietario confirmó la operación en 3 asignaturas reales sin incidencias funcionales bloqueantes.
+La sección final registra el cierre. El plan original siguiente se conserva como historial;
+su estado inicial pendiente no describe el estado actual.
+
+## Plan original conservado
+
 **Plan pendiente de autorización y ejecución.** El smoke staging hasta Fase 6B fue aprobado por el propietario;
 no sustituye el smoke del RC ni constituye un piloto productivo. No se inició piloto en Fase 7.
 
@@ -58,3 +65,34 @@ o refresh tokens. No adjuntar CSV real a Git. Detallar impacto, mitigación, tie
 Al cierre, separar: evidencia automatizada, smoke RC y resultados del piloto. Solo después se puede proponer
 1.0.0; merge, deploy y release necesitan sus autorizaciones correspondientes. Attendance, transcripciones
 recuperadas, multi-COHOST, analytics y backup/restore permanecen fuera de este piloto.
+
+## CIERRE DEL PILOTO
+
+Evidencia comunicada por el propietario al autorizar la promoción de RC2 a 1.0.0,
+con fecha de versión **2026-09-29**. Este registro no atribuye una fecha exacta ni duración
+no informadas al piloto y no constituye una nueva ejecución por el agente.
+
+- 3 asignaturas reales utilizadas, sin incluir datos identificables en este repositorio.
+- Creación Meet-first y Calendar correctos, incluida recurrencia.
+- Docente COHOST y artifactConfig correctos.
+- Grabación automática correcta; conferenceRecords, recordings y `FILE_GENERATED` comprobados.
+- Discovery por cron y rename correctos.
+- Publicación automática, ocultar/mostrar y acceso/apertura por estudiante correctos.
+- Cron cada 5 minutos, cola ad hoc y Health correctos según el smoke reportado.
+- Activity Chooser, favoritos/Destacados e información del módulo correctos.
+- Sin incidencias funcionales bloqueantes detectadas durante el piloto.
+
+El smoke productivo de RC2 también confirmó instalación/upgrade, OAuth2 institucional,
+cuenta maestra e issuer dedicado. La causa visual de favoritos no se había reproducido
+localmente en RC2; su aceptación se cierra ahora por el smoke productivo confirmado por el propietario.
+
+**Conclusión: piloto completado satisfactoriamente para el alcance probado.**
+Se aprueba la promoción a 1.0.0 y el despliegue progresivo como siguiente etapa operativa,
+sin extender esta evidencia a cargas, motores, versiones o funciones no probadas.
+CI RC2: [TUP Meet CI #35802454671](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35802454671),
+QUALITY PASS; 494 pruebas por Moodle 4.5/5.0/5.1, con 8065/8066/8066 aserciones.
+
+La migración histórica continúa con el CSV existente; no mueve, renombra ni modifica permisos
+ni contenido de archivos históricos. `mod_googlemeet` permanece disponible durante la transición,
+sin cambios en este trabajo. Su retiro posterior requiere ausencia de cursos dependientes y autorización.
+La promoción documental no realiza deploy, importación institucional, ZIP ni publicación de release.

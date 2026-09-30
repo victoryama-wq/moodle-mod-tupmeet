@@ -1,8 +1,9 @@
-# Instalación y actualización — 0.9.0-rc1
+# Instalación y actualización — 1.0.0
 
-Esta guía prepara una instalación autorizada; la Fase 7 no despliega ni inicia el piloto.
-RC no significa versión estable 1.0. Consulte primero [limitaciones](KNOWN_LIMITATIONS.md),
-[rollback](ROLLBACK.md) y [criterios del piloto](PILOT.md).
+Primera versión estable, promovida desde RC2 tras smoke productivo y piloto aprobados por el propietario.
+Esta guía prepara cada despliegue progresivo autorizado; no acredita su ejecución.
+Consulte primero [limitaciones](KNOWN_LIMITATIONS.md), [rollback](ROLLBACK.md)
+y [plan y cierre del piloto](PILOT.md).
 
 ## Requisitos y responsables
 
@@ -28,13 +29,13 @@ RC no significa versión estable 1.0. Consulte primero [limitaciones](KNOWN_LIMI
    No sobreponer versiones indiscriminadamente: podrían sobrevivir páginas PoC eliminadas.
    No tocar `mod_googlemeet`, Moodle core ni `config.php`.
 5. Confirmar una sola carpeta `tupmeet`, con `version.php` directamente dentro; no `tupmeet/tupmeet`.
-   Comprobar versión `2026092201`, release `0.9.0-rc1`, madurez `MATURITY_RC` y ausencia de PoC.
+   Comprobar versión `2026092900`, release `1.0.0`, madurez `MATURITY_STABLE` y ausencia de PoC.
 6. Aplicar propietario/permisos conforme al despliegue de Moodle: código legible por PHP y no escribible
    por usuarios web. Mantener `moodledata` fuera del árbol público; no usar permisos universales de escritura.
 7. Entrar como administrador en **Administración del sitio → Notificaciones** y ejecutar la actualización.
    Alternativa del operador: `php admin/cli/upgrade.php --non-interactive` desde el directorio web Moodle
    (en 5.1, `public/`). Este comando actualiza componentes pendientes del sitio: verificar el inventario antes.
-8. Confirmar `mod_tupmeet = 2026092201`. Desde 0.8.3 no hay nuevo paso XMLDB ni actualización de filas:
+8. Confirmar `mod_tupmeet = 2026092900`. Desde 0.8.3 no hay nuevo paso XMLDB ni actualización de filas:
    Moodle actualiza su metadata de versión. Ante errores, detenerse y aplicar [rollback](ROLLBACK.md).
 9. Purgar cachés desde **Administración del sitio → Desarrollo → Purgar todas las cachés**,
    o `php admin/cli/purge_caches.php` desde el mismo directorio web.
@@ -52,8 +53,8 @@ RC no significa versión estable 1.0. Consulte primero [limitaciones](KNOWN_LIMI
 14. Comprobar con cuentas autorizadas de docente y estudiante: entrada a Meet, tabla académica, abrir grabación,
     ojo mostrar/ocultar, ausencia de panel técnico y páginas administrativas para estudiantes.
     Abrir un enlace requiere además permisos Drive ya definidos por la institución.
-15. Revisar cola y Health después de cron, registrar evidencia sin secretos y decidir si se autoriza el piloto.
-    Una instalación exitosa no sustituye este smoke ni inicia automáticamente el piloto.
+15. Revisar cola y Health después de cron, registrar evidencia sin secretos y decidir si se autoriza ampliar el despliegue.
+    El piloto original está completado; una instalación exitosa no sustituye el smoke de cada despliegue.
 
 ## Google Cloud y OAuth nativo de Moodle
 
@@ -77,7 +78,7 @@ RC no significa versión estable 1.0. Consulte primero [limitaciones](KNOWN_LIMI
    verificarlo y cambiar la predeterminada. Deshabilitar la anterior solo para nuevas reuniones conserva su historia.
    Mantener su autorización mientras sus actividades necesiten sincronizarse. No reconectar un issuer histórico con otra persona.
 
-### Scopes actuales: no añadir otros para este RC
+### Scopes actuales: sin ampliación en 1.0.0
 
 | Scope | Uso del plugin |
 |---|---|
@@ -92,13 +93,13 @@ solo agrega estos cinco scopes a issuers Google registrados en TUP Meet, incluid
 Tras cambiar consentimiento/scopes, reconectar la cuenta de sistema y verificar la misma identidad.
 No habilitar scopes de permisos, contenido completo de Drive o delegación de dominio como solución improvisada.
 
-## Checklist de aceptación antes del piloto
+## Checklist de aceptación de cada despliegue
 
 - [ ] Respaldos completos y procedimiento de restauración comprobado.
-- [ ] Código limpio sin PoC; versión RC y actualización sin warnings ni reparación XMLDB.
+- [ ] Código limpio sin PoC; versión 1.0.0 y actualización sin warnings ni reparación XMLDB.
 - [ ] APIs, licencia, políticas, callback y cuenta de sistema revisados; identidad/predeterminada correctas.
 - [ ] Cron cada minuto y `discover_recordings` cada cinco minutos; cola con avance observado.
-- [ ] Smoke del RC y acceso por roles aprobados por el responsable.
-- [ ] [Runbook](ADMIN_RUNBOOK.md), [guía docente](TEACHER_GUIDE.md) y [plan de piloto](PILOT.md) entregados.
+- [ ] Smoke de la instalación y acceso por roles aprobados por el responsable.
+- [ ] [Runbook](ADMIN_RUNBOOK.md), [guía docente](TEACHER_GUIDE.md) y [plan y cierre del piloto](PILOT.md) entregados.
 
 Estos pasos son instrucciones para una operación futura autorizada; no constituyen evidencia de ejecución.

@@ -1,20 +1,34 @@
 # Delivery roadmap
 
-## Estado vigente — Fase 7
+## Estado vigente — 1.0.0 estable
 
-**0.9.0-rc1 / 2026092201**: Release Candidate y preparación de piloto, con feature freeze.
-La base Fase 6B tiene CI remoto y smoke staging aprobados por el propietario.
-Fase 7 aporta auditoría, instalación limpia, upgrade metadata-only, matriz de seguridad y guías operativas;
-no añade funciones, esquema, scopes ni cambia la política de retry Calendar.
+**1.0.0 / 2026092900 / MATURITY_STABLE**: promoción de RC2 con feature freeze absoluto.
+Solo documentación, metadata y cobertura del upgrade de metadata; sin cambios funcionales, DB ni scopes.
 
-Siguiente etapa: validación remota del RC y smoke específico, ambos autorizados separadamente;
-después, [piloto institucional](PILOT.md) de 3–5 asignaturas por 1–2 semanas.
-Proponer **1.0.0 solo si se cumplen sus criterios observables** y los responsables lo aprueban.
-Merge, deploy y release no se derivan automáticamente de esa propuesta.
+- Release Candidate ✅ — CI RC2 aprobado en Moodle 4.5/5.0/5.1.
+- Smoke productivo ✅ — confirmado por el propietario, incluidos favoritos e información del selector.
+- Piloto institucional ✅ — 3 asignaturas, completado satisfactoriamente para el alcance probado,
+  sin incidencias funcionales bloqueantes.
+- 1.0.0 estable ✅ — primera versión estable preparada; no implica publicación de release ni despliegue.
 
-Attendance, recuperación de transcripciones, participantes, analytics, multi-COHOST,
-backup/restore nativo y búsqueda de carpetas Drive quedan fuera del RC y del piloto.
-No se inicia una nueva fase de funciones en este trabajo.
+Evidencia: [cierre del piloto](PILOT.md) y [Fase 7](PHASE7.md).
+
+### Próxima etapa operativa
+
+- Despliegue progresivo de TUP Meet mediante operaciones autorizadas.
+- Creación de nuevas actividades TUP Meet para reuniones futuras: nuevo Space Meet-first,
+  nuevo Calendar y COHOST/artifacts; no copiar automáticamente URLs ni actividades antiguas.
+- Migración de grabaciones históricas mediante el **mecanismo CSV ya existente**:
+  TUP Meet → Migración histórica → plantilla CSV → catálogo TUP Meet → preview → confirmación → asociación.
+  Drive existente → CSV histórico → TUP Meet existente → referencia local.
+  Los archivos históricos no se mueven, renombran, descargan ni cambian de permisos.
+- Mantener `mod_googlemeet` durante la transición; retiro progresivo posterior solo cuando
+  no existan cursos dependientes y se autorice esa operación. Este trabajo no lo modifica ni desinstala.
+
+No se desarrollan nuevas herramientas de migración, lectura automática del legacy, creación masiva de
+Spaces, fuzzy matching, tablas, endpoints, scripts ni llamadas Drive. La migración es un procedimiento operativo.
+Attendance, recuperación de transcripciones, participantes, analytics, multi-COHOST y backup/restore
+nativo siguen fuera de 1.0.0. Merge, deploy y publicación requieren autorización separada.
 
 ## Historial del plan original
 

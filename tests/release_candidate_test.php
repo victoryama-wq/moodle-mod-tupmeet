@@ -94,7 +94,7 @@ final class release_candidate_test extends \advanced_testcase {
         }, static function (): void {
         }, false);
         $this->assertSame(['mod_tupmeet' => false], $upgraded);
-        $this->assertEquals(2026092202, get_config('mod_tupmeet', 'version'));
+        $this->assertEquals(2026092900, get_config('mod_tupmeet', 'version'));
         foreach ($before as $table => $rows) {
             $this->assertEquals($rows, $DB->get_records($table, [], 'id'), $table);
         }
@@ -102,12 +102,12 @@ final class release_candidate_test extends \advanced_testcase {
     }
 
     /**
-     * Exercise both the previous alpha and RC1 upgrade paths.
+     * Exercise the previous alpha, RC1 and RC2 metadata-only upgrade paths.
      *
-     * @return array Metadata-only upgrade origins retained for RC2
+     * @return array Metadata-only upgrade origins retained for the stable release
      */
     public static function previous_versions(): array {
-        return ['alpha' => [2026092200], 'rc1' => [2026092201]];
+        return ['alpha' => [2026092200], 'rc1' => [2026092201], 'rc2' => [2026092202]];
     }
 
     /**
@@ -118,8 +118,8 @@ final class release_candidate_test extends \advanced_testcase {
         $this->resetAfterTest();
         $plugin = new \stdClass();
         require(__DIR__ . '/../version.php');
-        $this->assertSame(MATURITY_RC, $plugin->maturity);
-        $this->assertSame('0.9.0-rc2', $plugin->release);
+        $this->assertSame(MATURITY_STABLE, $plugin->maturity);
+        $this->assertSame('1.0.0', $plugin->release);
         $this->assertEquals($plugin->version, get_config('mod_tupmeet', 'version'));
         $file = new \xmldb_file(__DIR__ . '/../db/install.xml');
         $this->assertTrue($file->loadXMLStructure());

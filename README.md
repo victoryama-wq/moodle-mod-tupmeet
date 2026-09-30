@@ -5,15 +5,18 @@ Calendar, coorganizador docente y una cronología académica de grabaciones nuev
 
 ## Estado actual
 
-**0.9.0-rc1 · 2026092201 · MATURITY_RC.** Fase 7 prepara el piloto con feature freeze:
-auditoría, validaciones y documentación; sin nuevas funciones ni cambios de esquema respecto de 0.8.3-alpha.
+**1.0.0 · 2026092900 · MATURITY_STABLE.** Primera versión estable de TUP Meet,
+promovida desde `0.9.0-rc2` sin cambios funcionales, de esquema ni de scopes.
 
-La base Fase 6B cuenta con CI remoto aprobado y smoke real de staging confirmado por el propietario,
-incluyendo Meet-first, artifacts, grabaciones/publicación y CSV idempotente.
-La validación remota del RC está aprobada: [TUP Meet CI #35785884626](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35785884626)
-PASS en QUALITY y PHPUnit Moodle 4.5/5.0/5.1; resultados completos en [Fase 7](docs/PHASE7.md).
-El smoke en Moodle productivo y el piloto siguen pendientes. No hubo deploy, instalación en producción
-ni release publicado; este RC no es una publicación estable 1.0.
+RC2 fue validado en CI: [TUP Meet CI #35802454671](https://github.com/victoryama-wq/moodle-mod-tupmeet/actions/runs/35802454671)
+PASS en QUALITY y PHPUnit Moodle 4.5/5.0/5.1 (494 pruebas; 8065/8066/8066 aserciones).
+El propietario confirmó la instalación/upgrade y el smoke de RC2 en Moodle productivo, incluidos
+Activity Chooser, favoritos e información del módulo. El piloto institucional de **3 asignaturas reales**
+se completó satisfactoriamente para el alcance probado, sin incidencias funcionales bloqueantes.
+TUP Meet queda habilitado para **despliegue progresivo**, mediante operaciones autorizadas por separado.
+Esta promoción documental y de metadata no ejecuta un despliegue ni publica un release GitHub.
+El CI indicado corresponde a RC2; no se presenta como una ejecución remota del nuevo commit 1.0.0.
+Evidencia: [cierre del piloto](docs/PILOT.md) y [Fase 7](docs/PHASE7.md).
 
 ## Funciones disponibles
 
@@ -41,7 +44,7 @@ Validación local con MariaDB 10.11. Google Workspace con licencia/política com
 y APIs **Google Calendar**, **Google Meet REST** y **Google Drive** habilitadas.
 No se hardcodea una cuenta institucional ni se almacenan tokens en tablas propias.
 
-Scopes actuales (sin ampliación en RC): `calendar.events.owned`, `meetings.space.settings`,
+Scopes actuales (sin ampliación en 1.0.0): `calendar.events.owned`, `meetings.space.settings`,
 `meetings.space.created`, `meetings.space.readonly`, `drive.metadata`, además de identidad nativa Moodle.
 La [guía de instalación](docs/PRODUCTION_INSTALL.md) incluye las URI completas, callback y conexión.
 
@@ -55,6 +58,17 @@ No sobreponer archivos que puedan dejar rutas PoC antiguas.
 Administración del sitio → Plugins → Módulos de actividad → TUP Meet:
 **Cuentas maestras**, **Estado del sistema**, **Migración histórica**.
 Cambiar la cuenta predeterminada afecta únicamente a actividades nuevas.
+
+## Transición operativa e histórico
+
+La migración utiliza exclusivamente el mecanismo CSV existente:
+**TUP Meet → Migración histórica → plantilla CSV → catálogo TUP Meet → preview → confirmación → asociación de grabaciones históricas**.
+Para reuniones futuras se crea una nueva actividad TUP Meet, con nuevo Space Meet-first,
+Calendar y COHOST/artifacts. No se copian automáticamente actividades ni enlaces Meet antiguos.
+Para grabaciones históricas se asocia una referencia local desde el CSV a una actividad TUP Meet existente;
+los archivos Drive no se mueven, renombran, descargan ni cambian de permisos por esta importación.
+`mod_googlemeet` puede mantenerse durante la transición y retirarse posteriormente cuando ya no existan
+cursos dependientes, mediante una operación separada. 1.0.0 no añade herramientas de migración ni lo modifica.
 
 ## Seguridad y límites
 
@@ -73,16 +87,16 @@ La [matriz de endpoints y auditoría](docs/PHASE7.md) distingue permisos, HTTP y
 
 | Documento | Uso |
 |---|---|
-| [CHANGELOG](CHANGELOG.md) | Funcionalidad consolidada del RC |
+| [CHANGELOG](CHANGELOG.md) | Primera versión estable e historial |
 | [PRODUCTION_INSTALL](docs/PRODUCTION_INSTALL.md) | Instalación, actualización y OAuth |
 | [ROLLBACK](docs/ROLLBACK.md) | Contención y recuperación coherente, sin downgrade DB |
 | [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md) | Riesgos y mitigaciones |
 | [ADMIN_RUNBOOK](docs/ADMIN_RUNBOOK.md) | Diagnóstico y controles existentes |
 | [TEACHER_GUIDE](docs/TEACHER_GUIDE.md) | Operación cotidiana docente |
-| [PILOT](docs/PILOT.md) | Plan y criterios, todavía sin ejecución |
+| [PILOT](docs/PILOT.md) | Plan original y cierre satisfactorio del piloto |
 | [PHASE7](docs/PHASE7.md) | Auditoría, pruebas y evidencia del RC |
 | [ARCHITECTURE](docs/ARCHITECTURE.md) | Límites e invariantes |
-| [ROADMAP](docs/ROADMAP.md) | RC → piloto autorizado → posible 1.0 |
+| [ROADMAP](docs/ROADMAP.md) | 1.0.0 estable y despliegue progresivo |
 | [CI](docs/CI.md) | QUALITY y matriz Moodle |
 | [PHASE6B](docs/PHASE6B.md) | Contrato y límites de CSV histórico |
 
@@ -92,7 +106,8 @@ posteriores. No interpretar un “pendiente” histórico como estado actual ni 
 ## Validación y empaquetado reproducible
 
 Suite: `mod_tupmeet_testsuite` sobre las tres versiones Moodle, sin Google real.
-Se conservan los **482 casos base**, más cobertura RC de metadata/instalación y guardas de rutas.
+Se conservan los **494 casos de RC2** y se añade un caso de upgrade RC2 → 1.0.0: **495 casos**.
+La ampliación comprueba solo metadata y conservación íntegra de datos; no cambia pruebas funcionales.
 Los comandos y resultados están en [PHASE7](docs/PHASE7.md).
 
 Auditar fuentes sin crear ZIP (Python 3 + Git):
@@ -104,7 +119,7 @@ python3 tools/audit_package.py --ref HEAD
 
 El primer comando incluye cambios pendientes no ignorados; el segundo lee blobs del commit indicado.
 Verifican rutas, patrones de secretos y enlaces relativos; la revisión humana de fixtures y secretos sigue siendo necesaria.
-La Fase 7 **no genera paquete**. Un empaquetado posterior autorizado usará exclusivamente un commit aprobado,
+Esta promoción a 1.0.0 **no genera paquete**. Un empaquetado posterior autorizado usará exclusivamente un commit aprobado,
 raíz `tupmeet/`, revisión del contenido y SHA256; excluir `.git`, dependencias locales, datos, secretos y resultados de tests.
 
 ## Licencia
